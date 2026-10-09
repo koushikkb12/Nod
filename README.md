@@ -109,3 +109,4 @@ scripts/                      board validation and sample CV generator
 - Without an AI key, the drafter only rearranges and quotes your confirmed facts. Cover letters are accurate but plain.
 # Nod
 # Nod
+# Nod
