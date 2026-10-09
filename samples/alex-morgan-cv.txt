@@ -1,0 +1,27 @@
+Alex Morgan
+alex.morgan@example.com · 07700 900123 · London, UK · linkedin.com/in/alexmorgan-dev · github.com/alexmorgan
+
+PROFILE
+Software engineer with 5 years of experience building Python and TypeScript services for logistics and e-commerce. I enjoy making systems faster and easier to run.
+
+EXPERIENCE
+Software Engineer, Parcelwise | Mar 2021 – Present
+• Built Python and TypeScript services that schedule deliveries for 1,200 drivers across the UK.
+• Cut API response times by 38% by redesigning PostgreSQL indexes and adding Redis caching.
+• Moved 14 services from virtual machines to Docker containers on AWS, reducing hosting costs by 22%.
+• Introduced automated testing with pytest and GitHub Actions, raising test coverage from 41% to 83%.
+• Mentored 3 junior developers through code reviews and pairing.
+
+Junior Developer, Brightlane Digital | Sep 2019 – Feb 2021
+• Developed React and Node.js features for 6 client e-commerce sites.
+• Built a product search API in Django that handled 50,000 searches per day.
+• Fixed accessibility issues to meet WCAG 2.1 AA on 4 client websites.
+
+SKILLS
+Python, TypeScript, JavaScript, Django, FastAPI, Node.js, React, PostgreSQL, Redis, Docker, AWS, Git, GitHub Actions, pytest, REST APIs
+
+EDUCATION
+BSc Computer Science, University of Leeds, 2016 – 2019 (2:1)
+
+CERTIFICATIONS
+AWS Certified Developer – Associate (2022)

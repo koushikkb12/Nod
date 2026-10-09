@@ -1,0 +1,123 @@
+@import "tailwindcss";
+
+@theme {
+  --color-paper: #f6f4ee;
+  --color-paper-2: #efece3;
+  --color-card: #fffdf8;
+  --color-ink: #15161a;
+  --color-ink-2: #3b3c42;
+  --color-muted: #6f6e68;
+  --color-line: #e2ddd0;
+  --color-line-2: #cfc8b8;
+  --color-nod: #d7f25c;
+  --color-nod-deep: #b9d63a;
+  --color-traced: #2f7d4f;
+  --color-traced-bg: #e6f2e9;
+  --color-blocked: #c4442a;
+  --color-blocked-bg: #fbe9e4;
+  --color-warn: #a86a12;
+  --color-warn-bg: #fbf0d9;
+  --color-info: #2f5d8a;
+  --color-info-bg: #e5edf6;
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-display: var(--font-instrument-serif), Georgia, serif;
+
+  --radius-card: 14px;
+  --shadow-card: 0 1px 0 rgb(21 22 26 / 0.04), 0 8px 24px -12px rgb(21 22 26 / 0.12);
+  --shadow-lift: 0 1px 0 rgb(21 22 26 / 0.05), 0 18px 40px -18px rgb(21 22 26 / 0.28);
+
+  --animate-rise: rise 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  --animate-stamp: stamp 0.45s cubic-bezier(0.3, 1.6, 0.5, 1) both;
+  --animate-nod: nod 2.6s ease-in-out infinite;
+  --animate-pulse-dot: pulse-dot 1.4s ease-in-out infinite;
+
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes stamp {
+    0% { opacity: 0; transform: scale(1.6) rotate(-14deg); }
+    100% { opacity: 1; transform: scale(1) rotate(-8deg); }
+  }
+  @keyframes nod {
+    0%, 70%, 100% { transform: translateY(0); }
+    78% { transform: translateY(0.09em); }
+    86% { transform: translateY(-0.02em); }
+  }
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.35; }
+  }
+}
+
+@layer base {
+  html {
+    background: var(--color-paper);
+    color: var(--color-ink);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    font-family: var(--font-sans);
+  }
+  ::selection {
+    background: var(--color-nod);
+    color: var(--color-ink);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-ink);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@utility font-display {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: -0.015em;
+}
+
+/* Subtle paper grain, used on the landing page and receipts. */
+@utility grain {
+  background-image: radial-gradient(rgb(21 22 26 / 0.035) 1px, transparent 1px);
+  background-size: 3px 3px;
+}
+
+/* Perforated receipt edge. */
+@utility perforated {
+  position: relative;
+  &::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: -6px;
+    height: 12px;
+    background: radial-gradient(circle at 6px 6px, var(--color-paper) 5px, transparent 5.5px) repeat-x;
+    background-size: 14px 12px;
+  }
+}
+
+/* Job descriptions come from employers; give them calm typography. */
+@utility prose-job {
+  color: var(--color-ink-2);
+  line-height: 1.65;
+  font-size: 0.95rem;
+  & p { margin: 0 0 0.85em; }
+  & h2, & h3, & h4 { color: var(--color-ink); font-weight: 600; margin: 1.4em 0 0.5em; font-size: 1rem; }
+  & ul, & ol { margin: 0 0 1em; padding-left: 1.25em; }
+  & ul { list-style: disc; }
+  & ol { list-style: decimal; }
+  & li { margin: 0.25em 0; }
+  & a { text-decoration: underline; text-underline-offset: 2px; }
+  & strong, & b { color: var(--color-ink); font-weight: 600; }
+}
