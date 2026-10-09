@@ -107,6 +107,3 @@ scripts/                      board validation and sample CV generator
 - Ingest runs inside the web server. That's fine on one machine; a production deployment would move ingest, matching and submission to a job queue (see the roadmap in the plan).
 - Email reply tracking (Gmail and Outlook) isn't built yet. Google requires a paid security assessment for the restricted Gmail scopes, as the plan explains.
 - Without an AI key, the drafter only rearranges and quotes your confirmed facts. Cover letters are accurate but plain.
-# Nod
-# Nod
-# Nod
