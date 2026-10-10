@@ -11,6 +11,7 @@ const nextConfig: NextConfig = {
     "playwright-core",
     "unpdf",
     "mammoth",
+    "pg",
   ],
   experimental: {
     serverActions: {

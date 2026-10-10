@@ -26,6 +26,8 @@ export async function GET() {
     headers: {
       "content-type": "application/json",
       "content-disposition": `attachment; filename="nod-export-${new Date().toISOString().slice(0, 10)}.json"`,
+      "cache-control": "private, no-store",
+      "referrer-policy": "no-referrer",
     },
   });
 }

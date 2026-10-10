@@ -33,9 +33,11 @@ async function Sidebar() {
             {paused ? "Agent paused" : "Agent ready"}
           </p>
           <p className="mt-1">{ai ? `Drafting with ${ai.label}` : "Rule-based drafting (no AI key set)"}</p>
-          <Link href="/demo-ats/inbox" target="_blank" className="mt-1 inline-block underline underline-offset-2 hover:text-ink">
-            Demo employer inbox ↗
-          </Link>
+          {process.env.NODE_ENV !== "production" ? (
+            <Link href="/demo-ats/inbox" target="_blank" className="mt-1 inline-block underline underline-offset-2 hover:text-ink">
+              Demo employer inbox ↗
+            </Link>
+          ) : null}
         </div>
         {user ? (
           <div className="flex items-center justify-between px-1">

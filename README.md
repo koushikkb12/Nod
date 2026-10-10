@@ -45,6 +45,17 @@ A sample CV is included at `samples/alex-morgan-cv.pdf`; `npm run sample-cv` reg
 - **No LinkedIn or Indeed scraping.** Jobs come only from public employer APIs that are meant to be read.
 - **Prompt injection.** Job ads are treated as untrusted data. Hidden instructions are flagged, shown to you and ignored, and the fact guard blocks any claim they try to introduce.
 
+## Database and deployment security
+
+- PGlite is for local development. Production database initialization fails closed unless `DATABASE_URL` points to PostgreSQL, `BETTER_AUTH_SECRET` has at least 32 bytes of entropy, `BETTER_AUTH_URL` and `NOD_BASE_URL` are HTTPS URLs on the same origin, and `NOD_DATA_DIR` is set.
+- Remote PostgreSQL connections verify TLS certificates. Do not add credentials to source files or `NEXT_PUBLIC_` variables; supply them through the deployment's secret environment settings.
+- PostgreSQL stores account and application records. CVs, generated PDFs and screenshots remain files under `NOD_DATA_DIR`; the app restricts these directories/files to the service account. Production must mount private persistent storage there, enable the host's at-rest volume encryption, and back it up with the database. Files are not encrypted separately by the app.
+- Auth request throttling uses the database, so limits are shared across app processes. The migration creates the `rate_limit` table.
+- Production responses set security headers, a per-response CSP nonce, HSTS and `no-store`. The demo ATS is local-only because this build has no separate employer identity. Locally, the inbox and CV downloads require sign-in and show only the signed-in user's submissions; Nod's submit worker uses a short-lived signed HttpOnly cookie, and deleting an account also deletes its demo ATS copies.
+- The password input is sent to Better Auth in the request body, not in a URL. Better Auth stores a password hash. In production, the app requires HTTPS for its configured public URLs; do not expose the development server directly to the internet.
+
+The repository cannot provision a managed PostgreSQL service or deployment secrets by itself. Before a production deployment, create a PostgreSQL database and private persistent file volume, then set the required environment variables in the hosting provider.
+
 ## AI is optional
 
 With no AI key, Nod uses its rule-based parser, matcher and drafter, and everything above still works. To use a model, add one key to `.env.local`: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` or `GOOGLE_GENERATIVE_AI_API_KEY`. Nod then uses the [AI SDK](https://ai-sdk.dev) for CV parsing and drafting. Choose the provider or model with `NOD_AI_PROVIDER` and `NOD_AI_MODEL`. AI output goes through the same fact guard as rule-based output.

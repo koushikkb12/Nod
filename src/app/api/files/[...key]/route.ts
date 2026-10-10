@@ -13,7 +13,12 @@ export async function GET(_req: Request, ctx: RouteContext<"/api/files/[...key]"
   const user = await getCurrentUser();
   if (!user) return new Response("Not signed in", { status: 401 });
   const { key } = await ctx.params;
-  const path = key.map(decodeURIComponent).join("/");
+  let path: string;
+  try {
+    path = key.map(decodeURIComponent).join("/");
+  } catch {
+    return new Response("Not found", { status: 404 });
+  }
   if (path.split("/")[0] !== user.id || path.includes("..")) return new Response("Not found", { status: 404 });
   try {
     const bytes = await getFile(path);
@@ -21,7 +26,8 @@ export async function GET(_req: Request, ctx: RouteContext<"/api/files/[...key]"
     return new Response(new Uint8Array(bytes), {
       headers: {
         "content-type": TYPES[ext] ?? "application/octet-stream",
-        "cache-control": "private, max-age=3600",
+        "cache-control": "private, no-store",
+        "referrer-policy": "no-referrer",
         "x-content-type-options": "nosniff",
       },
     });

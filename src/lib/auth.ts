@@ -3,16 +3,22 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
 import { dbSync } from "@/lib/db";
-import { account, session, user, verification } from "@/lib/db/schema";
+import { account, rateLimit, session, user, verification } from "@/lib/db/schema";
 
 function createAuth() {
+  const secret = process.env.BETTER_AUTH_SECRET;
+  if (!secret || Buffer.byteLength(secret, "utf8") < 32) {
+    throw new Error("BETTER_AUTH_SECRET must be set to a random value of at least 32 bytes.");
+  }
+  const baseURL = process.env.BETTER_AUTH_URL ?? "http://localhost:3000";
   return betterAuth({
     appName: "Nod",
-    secret: process.env.BETTER_AUTH_SECRET,
-    baseURL: process.env.BETTER_AUTH_URL ?? "http://localhost:3000",
+    secret,
+    baseURL,
+    trustedOrigins: [baseURL],
     database: drizzleAdapter(dbSync(), {
       provider: "pg",
-      schema: { user, session, account, verification },
+      schema: { user, session, account, verification, rateLimit },
     }),
     emailAndPassword: {
       enabled: true,
@@ -20,7 +26,27 @@ function createAuth() {
       minPasswordLength: 8,
     },
     session: {
-      expiresIn: 60 * 60 * 24 * 14,
+      expiresIn: 60 * 60 * 24 * 14, // 14 days
+    },
+    rateLimit: {
+      enabled: true,
+      storage: "database",
+      window: 60,
+      max: 100,
+      customRules: {
+        "/sign-in/email": { window: 15 * 60, max: 10 },
+        "/sign-up/email": { window: 60 * 60, max: 5 },
+      },
+    },
+    advanced: {
+      // Use Secure cookies in production (HTTPS only, __Secure- prefix)
+      useSecureCookies: process.env.NODE_ENV === "production",
+      defaultCookieAttributes: {
+        httpOnly: true,
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+        path: "/",
+      },
     },
     // nextCookies must be last so server actions can set auth cookies.
     plugins: [nextCookies()],

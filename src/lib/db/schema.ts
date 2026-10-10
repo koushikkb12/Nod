@@ -1,5 +1,6 @@
 import {
   bigserial,
+  bigint,
   boolean,
   index,
   integer,
@@ -9,6 +10,7 @@ import {
   timestamp,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import type {
   AnswerCategory,
   AppStatus,
@@ -72,6 +74,14 @@ export const verification = pgTable("verification", {
   expiresAt: ts().notNull(),
   createdAt: ts().notNull().defaultNow(),
   updatedAt: ts().notNull().defaultNow(),
+});
+
+/** Better Auth's persistent rate limit store (timestamps are epoch milliseconds). */
+export const rateLimit = pgTable("rate_limit", {
+  id: text().primaryKey().default(sql`gen_random_uuid()::text`),
+  key: text().notNull().unique(),
+  count: integer().notNull(),
+  lastRequest: bigint({ mode: "number" }).notNull(),
 });
 
 /* ------------------------------------------------------------------ */
@@ -326,6 +336,8 @@ export const events = pgTable(
 export const demoAtsApplications = pgTable("demo_ats_applications", {
   id: text().primaryKey(),
   jobId: text().notNull(),
+  applicationId: text().unique().references(() => applications.id, { onDelete: "cascade" }),
+  ownerUserId: text().references(() => user.id, { onDelete: "cascade" }),
   fields: jsonb().$type<Record<string, string>>().notNull(),
   resumeFile: text(),
   resumeSha256: text(),

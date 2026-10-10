@@ -5,9 +5,8 @@ export function generateStaticParams() {
   return DEMO_JOBS.map((j) => ({ jobId: j.id }));
 }
 
-async function Confirmation({ params, searchParams }: PageProps<"/demo-ats/[jobId]/thanks">) {
+async function Confirmation({ params }: PageProps<"/demo-ats/[jobId]/thanks">) {
   const { jobId } = await params;
-  const { ref } = await searchParams;
   const job = demoJob(decodeURIComponent(jobId));
   const company = job?.company.replace(/ \(demo\)$/, "") ?? "the employer";
   return (
@@ -18,7 +17,7 @@ async function Confirmation({ params, searchParams }: PageProps<"/demo-ats/[jobI
         {company} will review it and be in touch. Applied for {job?.title ?? "this role"}.
       </p>
       <p data-confirmation className="mt-6 inline-block rounded-md bg-slate-100 px-4 py-2 font-mono text-sm text-slate-800">
-        Application received: reference {String(ref ?? "unknown")}
+        Application received in the demo employer inbox.
       </p>
     </div>
   );

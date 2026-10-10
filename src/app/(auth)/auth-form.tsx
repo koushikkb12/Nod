@@ -3,16 +3,30 @@
 import { Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { authClient } from "@/lib/auth-client";
 import { Button, Field, Input } from "@/components/ui";
+
+/** Only allow relative paths under /app — prevent open redirects. */
+function safeNextUrl(raw: string | null): string {
+  if (!raw) return "/app";
+  try {
+    // Parse against a dummy base to extract just the pathname
+    const url = new URL(raw, "http://n");
+    if (url.pathname === "/app" || url.pathname.startsWith("/app/")) return url.pathname;
+  } catch {
+    // malformed URL — ignore
+  }
+  return "/app";
+}
 
 export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
   const router = useRouter();
   const params = useSearchParams();
-  const next = params.get("next")?.startsWith("/app") ? params.get("next")! : "/app";
+  const next = safeNextUrl(params.get("next"));
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -21,21 +35,30 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
     const f = new FormData(e.currentTarget);
     const email = String(f.get("email"));
     const password = String(f.get("password"));
-    const result =
-      mode === "sign-up"
-        ? await authClient.signUp.email({ email, password, name: String(f.get("name") || email.split("@")[0]) })
-        : await authClient.signIn.email({ email, password });
-    setPending(false);
-    if (result.error) {
-      setError(result.error.message ?? "Something went wrong. Try again.");
-      return;
+    try {
+      const result =
+        mode === "sign-up"
+          ? await authClient.signUp.email({ email, password, name: String(f.get("name") || email.split("@")[0]) })
+          : await authClient.signIn.email({ email, password });
+      if (result.error) {
+        setError(result.error.message ?? "Something went wrong. Try again.");
+        return;
+      }
+      formRef.current?.reset();
+      router.replace(next);
+      router.refresh();
+    } catch {
+      setError("We couldn't reach the sign-in service. Check your connection and try again.");
+    } finally {
+      setPending(false);
+      // Clear credentials on both handled errors and network failures.
+      const pwInput = formRef.current?.querySelector<HTMLInputElement>('input[name="password"]');
+      if (pwInput) pwInput.value = "";
     }
-    router.push(next);
-    router.refresh();
   }
 
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-4">
+    <form ref={formRef} onSubmit={onSubmit} className="flex flex-col gap-4" autoComplete="on">
       {mode === "sign-up" ? (
         <Field label="Your name" htmlFor="name">
           <Input id="name" name="name" autoComplete="name" required />

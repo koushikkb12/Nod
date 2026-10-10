@@ -1,0 +1,3 @@
+ALTER TABLE "demo_ats_applications" ADD COLUMN "application_id" text;--> statement-breakpoint
+ALTER TABLE "demo_ats_applications" ADD CONSTRAINT "demo_ats_applications_application_id_applications_id_fk" FOREIGN KEY ("application_id") REFERENCES "public"."applications"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "demo_ats_applications" ADD CONSTRAINT "demo_ats_applications_applicationId_unique" UNIQUE("application_id");

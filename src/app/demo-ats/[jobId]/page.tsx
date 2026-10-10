@@ -19,7 +19,7 @@ function FieldInput({ q }: { q: FormQuestion }) {
       "mt-1 block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-[15px] text-slate-900 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20",
   };
   if (q.type === "textarea") return <textarea {...common} rows={5} />;
-  if (q.type === "file") return <input {...common} type="file" accept=".pdf,.doc,.docx" className="mt-1 block w-full text-sm text-slate-700" />;
+  if (q.type === "file") return <input {...common} type="file" accept=".pdf,application/pdf" className="mt-1 block w-full text-sm text-slate-700" />;
   if (q.type === "select")
     return (
       <select {...common} defaultValue="">
@@ -37,6 +37,7 @@ function FieldInput({ q }: { q: FormQuestion }) {
 }
 
 async function DemoAtsForm({ params }: PageProps<"/demo-ats/[jobId]">) {
+  if (process.env.NODE_ENV === "production") notFound();
   const { jobId } = await params;
   const job = demoJob(decodeURIComponent(jobId));
   if (!job) notFound();

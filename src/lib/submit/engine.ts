@@ -4,7 +4,7 @@ import { getDb } from "@/lib/db";
 import { applications, submissions } from "@/lib/db/schema";
 import { absoluteApplyUrl, currentPayload, latestLedgerEntry, loadApplication, logEvent } from "@/lib/apps";
 import { isStillOpen } from "@/lib/jobs/sources";
-import { filePath, newId, putFile } from "@/lib/server-utils";
+import { createDemoSubmissionToken, filePath, newId, putFile } from "@/lib/server-utils";
 import type { ApplicationPayload } from "@/lib/consent/payload";
 import { browser } from "./pdf";
 
@@ -74,7 +74,14 @@ export async function runSubmission(userId: string, applicationId: string) {
 
     let outcome: Outcome;
     try {
-      outcome = await submitToForm({ userId, applicationId, url: absoluteApplyUrl(job), payload, cvPath: app.cvPdfPath ? filePath(app.cvPdfPath) : null });
+      outcome = await submitToForm({
+        userId,
+        applicationId,
+        url: absoluteApplyUrl(job),
+        payload,
+        cvPath: app.cvPdfPath ? filePath(app.cvPdfPath) : null,
+        demoToken: job.isDemo ? createDemoSubmissionToken(userId, applicationId) : undefined,
+      });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       await db.update(submissions).set({ status: "failed", error: message, finishedAt: new Date() }).where(eq(submissions.id, sub.id));
@@ -119,9 +126,28 @@ async function submitToForm(input: {
   url: string;
   payload: ApplicationPayload;
   cvPath: string | null;
+  demoToken?: string;
 }): Promise<Outcome> {
   const b = await browser();
   const context = await b.newContext({ viewport: { width: 1100, height: 900 } });
+  if (input.demoToken) {
+    const origin = new URL(input.url);
+    try {
+      await context.addCookies([{
+        name: "nod_demo_submission",
+        value: input.demoToken,
+        url: origin.origin,
+        path: "/api/demo-ats",
+        httpOnly: true,
+        secure: origin.protocol === "https:",
+        sameSite: "Strict",
+        expires: Math.floor(Date.now() / 1000) + 300,
+      }]);
+    } catch (err) {
+      await context.close();
+      throw err;
+    }
+  }
   const page = await context.newPage();
   page.setDefaultTimeout(20_000);
   const shot = async (name: string) => {
