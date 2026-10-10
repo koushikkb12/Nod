@@ -57,7 +57,14 @@ export function AuthForm({ mode, next: rawNext }: { mode: "sign-in" | "sign-up";
   }
 
   return (
-    <form ref={formRef} onSubmit={onSubmit} className="flex flex-col gap-4" autoComplete="on">
+    <form
+      ref={formRef}
+      onSubmit={onSubmit}
+      method="post"
+      action={mode === "sign-up" ? "/sign-up" : "/sign-in"}
+      className="flex flex-col gap-4"
+      autoComplete="on"
+    >
       {mode === "sign-up" ? (
         <Field label="Your name" htmlFor="name">
           <Input id="name" name="name" autoComplete="name" required />
