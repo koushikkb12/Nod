@@ -2,7 +2,7 @@
 
 import { Loader2 } from "lucide-react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { authClient } from "@/lib/auth-client";
 import { Button, Field, Input } from "@/components/ui";
@@ -20,10 +20,9 @@ function safeNextUrl(raw: string | null): string {
   return "/app";
 }
 
-export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
+export function AuthForm({ mode, next: rawNext }: { mode: "sign-in" | "sign-up"; next?: string | null }) {
   const router = useRouter();
-  const params = useSearchParams();
-  const next = safeNextUrl(params.get("next"));
+  const next = safeNextUrl(rawNext ?? null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
