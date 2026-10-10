@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Instrument_Serif } from "next/font/google";
+import { connection } from "next/server";
 import { Toaster } from "sonner";
 import "./globals.css";
 
@@ -22,7 +23,11 @@ export const viewport: Viewport = {
   themeColor: "#f6f4ee",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  // The proxy creates a fresh CSP nonce per request. Rendering the document at
+  // request time lets Next attach that nonce to its framework and inline scripts.
+  await connection();
+
   return (
     <html
       lang="en-GB"

@@ -1,8 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  cacheComponents: true,
-  partialPrefetching: true,
   // These packages load WASM, native binaries or browser builds from disk at
   // runtime, so Node must require them directly instead of bundling them.
   serverExternalPackages: [
