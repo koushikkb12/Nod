@@ -1,6 +1,6 @@
 "use client";
 
-import { Briefcase, FileText, Home, LogOut, ScrollText, SlidersHorizontal, Send } from "lucide-react";
+import { BarChart3, Briefcase, FileText, Home, LogOut, ScrollText, SlidersHorizontal, Send } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
@@ -10,6 +10,7 @@ const LINKS = [
   { href: "/app", label: "Home", icon: Home, exact: true },
   { href: "/app/jobs", label: "Jobs", icon: Briefcase },
   { href: "/app/applications", label: "Applications", icon: Send },
+  { href: "/app/insights", label: "Insights", icon: BarChart3 },
   { href: "/app/profile", label: "CV & facts", icon: FileText },
   { href: "/app/preferences", label: "Preferences", icon: SlidersHorizontal },
   { href: "/app/ledger", label: "Consent ledger", icon: ScrollText },
