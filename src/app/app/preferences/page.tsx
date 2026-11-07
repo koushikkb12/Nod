@@ -106,7 +106,7 @@ async function PreferencesPageContent() {
               <input type="checkbox" name="willingToRelocate" defaultChecked={p?.willingToRelocate ?? false} className="size-4 accent-ink" />
               I'm willing to relocate
             </label>
-            <Field label="Keywords (optional)" htmlFor="keywords">
+            <Field label="Keywords (optional)" htmlFor="keywords" hint="Matches that mention these get a small boost, and the match explains why.">
               <Textarea id="keywords" name="keywords" defaultValue={join(p?.keywords)} className="min-h-16" placeholder="climate, healthcare, fintech" />
             </Field>
           </Card>

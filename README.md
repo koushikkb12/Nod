@@ -13,6 +13,7 @@ cd nod
 npm install
 npx playwright install chromium     # browser used for CV PDFs and form submission
 cp .env.example .env.local          # then set BETTER_AUTH_SECRET (openssl rand -base64 32)
+npx next typegen                    # generates route types used by npm run typecheck
 npm run dev                         # http://localhost:3000
 ```
 
@@ -30,7 +31,7 @@ A sample CV is included at `samples/alex-morgan-cv.pdf`; `npm run sample-cv` reg
 |---|---|
 | **CV intake** | Parses PDF, DOCX or TXT into a **fact bank**: roles, achievements, skills, education and certifications. Every fact starts unconfirmed, and Nod won't use it until you confirm it. |
 | **Job discovery** | Reads the public posting APIs of employers' applicant tracking systems: Greenhouse, Lever and Ashby. Adzuna (UK aggregator) is optional. It deduplicates postings, marks closed ones, and sanitises job ad HTML. |
-| **Matching** | Applies hard filters (location, workplace, salary floor, excluded companies, sponsorship), then scores skills, title and seniority. Each score is explained: matched and missing skills, reasons and warnings. |
+| **Matching** | Applies hard filters (location, workplace, salary floor, excluded companies, sponsorship), then scores skills, title and seniority, with a small boost for your preference keywords. Each score is explained: matched and missing skills, reasons and warnings. The Jobs page filters by workplace, recency, score, source, stated salary and licensed sponsors. |
 | **Signals** | Checks employers against the UK Home Office register of licensed sponsors. Flags scam wording (upfront fees, payment requests, off-platform contact), stale or very short ads, and hidden instructions aimed at AI tools. |
 | **Drafting** | Builds a tailored CV, a cover letter and form answers. Every sentence cites the facts it relies on. A guard blocks any sentence with numbers, skills, employers or titles that aren't in your confirmed facts. |
 | **Form answers** | Fills answers from your profile, preferences and answer library. It never guesses: unknown questions are marked *Needs you*, and diversity questions default to "prefer not to say". |
@@ -108,6 +109,7 @@ scripts/                      board validation and sample CV generator
 | `npm run dev` | Start the app on port 3000 |
 | `npm run build` / `npm start` | Production build and server |
 | `npm run typecheck` / `npm run lint` | TypeScript and ESLint |
+| `npm test` | Unit tests (Vitest) for matching, the fact guard, form answers and payload hashing |
 | `npm run db:generate` | Generate a migration after editing `src/lib/db/schema.ts` |
 | `npm run boards:check` | Re-validate the company board list against the live APIs |
 | `npm run sample-cv` | Regenerate the sample CV in `samples/` |
