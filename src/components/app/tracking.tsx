@@ -1,6 +1,7 @@
 "use client";
 
-import { CalendarPlus, Trash2 } from "lucide-react";
+import { CalendarPlus, MessageCircleQuestion, Trash2 } from "lucide-react";
+import Link from "next/link";
 import { useTransition } from "react";
 import { toast } from "sonner";
 import { addInterview, deleteInterview, saveNotes, setFollowUp } from "@/app/app/actions/tracking";
@@ -50,7 +51,12 @@ export function TrackingPanel({
   return (
     <div className="space-y-5">
       <div>
-        <p className="text-[13px] font-medium">Interviews</p>
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-[13px] font-medium">Interviews</p>
+          <Link href={`/app/applications/${appId}/prep`} className="inline-flex items-center gap-1 text-[12px] text-muted underline underline-offset-2 hover:text-ink">
+            <MessageCircleQuestion className="size-3.5" /> Prep pack
+          </Link>
+        </div>
         {interviews.length ? (
           <ul className="mt-2 space-y-2">
             {interviews.map((iv) => (
