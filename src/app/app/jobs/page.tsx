@@ -123,14 +123,14 @@ async function JobsPageContent({ searchParams }: PageProps<"/app/jobs">) {
             </Link>
           ))}
         </div>
-        <form className="w-full max-w-xs">
+        <form key={`q:${JSON.stringify(keep)}`} className="w-full max-w-xs">
           <input type="hidden" name="tab" value={tab} />
           {Object.entries(filters).map(([k, v]) => (v ? <input key={k} type="hidden" name={k} value={v} /> : null))}
           <Input name="q" defaultValue={q} placeholder="Filter by title, company, place…" className="h-9 text-sm" />
         </form>
       </div>
 
-      <form className="flex flex-wrap items-center gap-2 text-[13px]" aria-label="Filters">
+      <form key={`f:${JSON.stringify(keep)}`} className="flex flex-wrap items-center gap-2 text-[13px]" aria-label="Filters">
         <input type="hidden" name="tab" value={tab} />
         {q ? <input type="hidden" name="q" value={q} /> : null}
         <Select name="workplace" defaultValue={filters.workplace ?? ""} aria-label="Workplace" className="h-9 w-auto text-[13px]">
