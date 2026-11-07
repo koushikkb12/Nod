@@ -268,10 +268,32 @@ export const applications = pgTable(
     draft: jsonb().$type<Draft>().notNull(),
     approvedHash: text(),
     cvPdfPath: text(),
+    /** Private notes. Never part of the approved payload. */
+    notes: text().notNull().default(""),
+    followUpAt: ts(),
     createdAt: ts().notNull().defaultNow(),
     updatedAt: ts().notNull().defaultNow(),
   },
   (t) => [index().on(t.userId, t.updatedAt)],
+);
+
+export const interviews = pgTable(
+  "interviews",
+  {
+    id: text().primaryKey(),
+    applicationId: text()
+      .notNull()
+      .references(() => applications.id, { onDelete: "cascade" }),
+    userId: text()
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    title: text().notNull(),
+    startsAt: ts().notNull(),
+    durationMinutes: integer().notNull().default(60),
+    location: text().notNull().default(""),
+    createdAt: ts().notNull().defaultNow(),
+  },
+  (t) => [index().on(t.userId, t.startsAt), index().on(t.applicationId)],
 );
 
 /**

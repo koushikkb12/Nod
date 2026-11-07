@@ -43,6 +43,13 @@
       "when": 1791599125598,
       "tag": "0005_auth_rate_limit_id",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794061584596,
+      "tag": "0006_application_tracking",
+      "breakpoints": true
     }
   ]
 }
