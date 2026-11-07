@@ -6,6 +6,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CompanyTile, ScoreRing } from "@/components/brand";
 import { MatchActions, PrepareButton } from "@/components/app/match-actions";
+import { MatchSummary } from "@/components/app/match-summary";
+import { hasAI } from "@/lib/ai";
 import { Badge, buttonVariants, Card, cn } from "@/components/ui";
 import { getDb } from "@/lib/db";
 import { applications, jobs, matches } from "@/lib/db/schema";
@@ -82,6 +84,7 @@ async function JobPageContent({ params }: PageProps<"/app/jobs/[jobId]">) {
                     <p className="text-[13px] text-muted">Based on your confirmed facts and preferences</p>
                   </div>
                 </div>
+                {hasAI() ? <MatchSummary jobId={job.id} summary={match.aiSummary} /> : null}
                 <ul className="mt-4 space-y-1.5 text-[13px] text-ink-2">
                   {match.reasons.map((r) => (
                     <li key={r} className="flex gap-2">

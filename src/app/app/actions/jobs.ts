@@ -10,6 +10,7 @@ import { latestIngest, saveJobs, startIngest } from "@/lib/jobs/ingest";
 import { parseJobUrl } from "@/lib/jobs/job-url";
 import { fetchJobByRef } from "@/lib/jobs/sources";
 import { computeMatches, matchAddedJob } from "@/lib/match/score";
+import { summarizeMatch } from "@/lib/match/summary";
 import { logEvent } from "@/lib/apps";
 import { newId } from "@/lib/server-utils";
 import { requireUser } from "@/lib/session";
@@ -106,6 +107,20 @@ export async function addJobFromUrl(_prev: { error?: string } | null, formData: 
   await saveJobs([job]);
   await matchAddedJob(user.id, job.id);
   redirect(`/app/jobs/${encodeURIComponent(job.id)}`);
+}
+
+/** Ask the AI why a job fits, keeping only sentences the fact guard allows. */
+export async function explainMatch(jobId: string) {
+  const user = await requireUser();
+  let summary;
+  try {
+    summary = await summarizeMatch(user.id, jobId);
+  } catch (err) {
+    console.error("[nod] match summary failed", err);
+    return { error: "The AI couldn't write a summary just now." };
+  }
+  refresh();
+  return summary ? { summary } : { error: "Nothing the AI wrote could be backed by your confirmed facts." };
 }
 
 export async function ingestStatus() {
