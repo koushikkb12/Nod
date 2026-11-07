@@ -110,3 +110,42 @@ export async function matchJobIds(userId: string, jobIds: string[]) {
   const db = await getDb();
   return db.select().from(matches).where(and(eq(matches.userId, userId), inArray(matches.jobId, jobIds)));
 }
+
+/**
+ * Score a job the user added themselves and shortlist it. Their preferences
+ * still shape the score, but never hide a job they asked for.
+ */
+export async function matchAddedJob(userId: string, jobId: string) {
+  const db = await getDb();
+  const [job] = await db
+    .select({
+      id: jobs.id, title: jobs.title, company: jobs.company, location: jobs.location,
+      workplace: jobs.workplace, salaryMin: jobs.salaryMin, salaryMax: jobs.salaryMax,
+      salaryCurrency: jobs.salaryCurrency, skills: jobs.skills, postedAt: jobs.postedAt,
+      riskFlags: jobs.riskFlags, sponsorMatch: jobs.sponsorMatch, isDemo: jobs.isDemo, source: jobs.source,
+    })
+    .from(jobs)
+    .where(eq(jobs.id, jobId));
+  if (!job) return null;
+  const [prefs] = await db.select().from(preferences).where(eq(preferences.userId, userId));
+  const userSkills = await userSkillSet(userId);
+  const userRegions = new Set<string>();
+  for (const l of prefs?.locations ?? []) regionsOf(l).forEach((r) => userRegions.add(r));
+  const excluded = new Set((prefs?.excludeCompanies ?? []).map((c) => normalise(c)));
+  const keywordHits = await findKeywordHits(prefs?.keywords ?? []);
+
+  let scored = scoreJob(job, { prefs: prefs ?? null, userSkills, userRegions, excluded, keywordHits });
+  if (!scored) {
+    const relaxed = prefs ? { ...prefs, locations: [], workplace: [], minSalary: null } : null;
+    scored = scoreJob(job, { prefs: relaxed, userSkills, userRegions: new Set(), excluded: new Set(), keywordHits });
+    scored?.warnings.unshift("Outside your preferences (place, workplace, salary or excluded company)");
+  }
+  if (!scored) return null;
+
+  const row = { ...scored, computedAt: new Date(), status: "shortlisted" as const };
+  await db
+    .insert(matches)
+    .values({ id: `${userId}:${job.id}`, userId, ...row })
+    .onConflictDoUpdate({ target: matches.id, set: row });
+  return scored;
+}

@@ -6,8 +6,10 @@ import { redirect } from "next/navigation";
 import { getDb } from "@/lib/db";
 import { applications, matches, preferences } from "@/lib/db/schema";
 import { generateDraft } from "@/lib/draft/generate";
-import { latestIngest, startIngest } from "@/lib/jobs/ingest";
-import { computeMatches } from "@/lib/match/score";
+import { latestIngest, saveJobs, startIngest } from "@/lib/jobs/ingest";
+import { parseJobUrl } from "@/lib/jobs/job-url";
+import { fetchJobByRef } from "@/lib/jobs/sources";
+import { computeMatches, matchAddedJob } from "@/lib/match/score";
 import { logEvent } from "@/lib/apps";
 import { newId } from "@/lib/server-utils";
 import { requireUser } from "@/lib/session";
@@ -87,6 +89,23 @@ export async function refreshJobs() {
     onDone: () => computeMatches(user.id),
   });
   return { started };
+}
+
+/** Add one job from a pasted Greenhouse, Lever or Ashby link, then open it. */
+export async function addJobFromUrl(_prev: { error?: string } | null, formData: FormData) {
+  const user = await requireUser();
+  const ref = parseJobUrl(String(formData.get("url") ?? ""));
+  if (!ref) return { error: "Paste a job link from Greenhouse, Lever or Ashby." };
+  let job;
+  try {
+    job = await fetchJobByRef(ref);
+  } catch {
+    return { error: "Couldn't reach the employer's job board. Try again in a moment." };
+  }
+  if (!job) return { error: "That job wasn't found. It may have closed." };
+  await saveJobs([job]);
+  await matchAddedJob(user.id, job.id);
+  redirect(`/app/jobs/${encodeURIComponent(job.id)}`);
 }
 
 export async function ingestStatus() {

@@ -5,6 +5,7 @@ import { AlertTriangle, BadgeCheck, CircleSlash } from "lucide-react";
 import Link from "next/link";
 import { CompanyTile, ScoreRing } from "@/components/brand";
 import { MatchActions, PrepareButton } from "@/components/app/match-actions";
+import { AddJobForm } from "@/components/app/add-job";
 import { RefreshJobsButton } from "@/components/app/refresh-jobs";
 import { Badge, Button, Card, cn, Empty, Input, SectionTitle, Select } from "@/components/ui";
 import { getDb } from "@/lib/db";
@@ -105,6 +106,10 @@ async function JobsPageContent({ searchParams }: PageProps<"/app/jobs">) {
           ? `Read ${run.stats.total.toLocaleString("en-GB")} open jobs straight from employer boards ${timeAgo(run.finishedAt ?? run.startedAt)}. Only jobs that fit your preferences appear here.`
           : "Press “Find new jobs” to read every company board. The first run takes about a minute."}
       </p>
+
+      <div className="max-w-xl">
+        <AddJobForm />
+      </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex gap-1 rounded-full border border-line bg-card p-1">

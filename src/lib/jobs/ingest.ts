@@ -99,6 +99,11 @@ async function withSponsors(list: NormalizedJob[]) {
   return list.map((j) => ({ ...j, sponsorMatch: byCompany.get(j.company) ?? null }));
 }
 
+/** Save jobs fetched outside a full ingest, such as a link the user pasted. */
+export async function saveJobs(list: NormalizedJob[]) {
+  await upsert(await withSponsors(list));
+}
+
 /** Mark jobs from a board that no longer appear in its feed as closed. */
 async function closeMissing(board: Board, seenIds: string[]) {
   const db = await getDb();
