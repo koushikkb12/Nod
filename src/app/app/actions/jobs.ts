@@ -127,10 +127,19 @@ export async function addCustomBoard(_prev: { error?: string; ok?: string } | nu
   }
   if (!board) return { error: "That board wasn't found. Check the link." };
   const name = String(formData.get("name") ?? "").trim().slice(0, 80) || board.name;
-  await db
+  const [added] = await db
     .insert(customBoards)
     .values({ id: newId("brd"), userId: user.id, source: board.source, token: board.token, name })
-    .onConflictDoNothing();
+    .onConflictDoNothing()
+    .returning({ id: customBoards.id });
+  if (added) {
+    // Re-count after inserting so two submits at once can't both slip under the limit.
+    const [{ n: after }] = await db.select({ n: count() }).from(customBoards).where(eq(customBoards.userId, user.id));
+    if (after > MAX_CUSTOM_BOARDS) {
+      await db.delete(customBoards).where(eq(customBoards.id, added.id));
+      return { error: `You can add up to ${MAX_CUSTOM_BOARDS} boards.` };
+    }
+  }
   let found = 0;
   try {
     const list = await fetchBoard({ ...board, name });
@@ -148,6 +157,8 @@ export async function removeCustomBoard(id: string) {
   const user = await requireUser();
   const db = await getDb();
   await db.delete(customBoards).where(and(eq(customBoards.id, id), eq(customBoards.userId, user.id)));
+  // Drops that board's jobs from the user's new matches; shortlisted ones stay.
+  await computeMatches(user.id);
   refresh();
 }
 

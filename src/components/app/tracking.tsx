@@ -22,7 +22,8 @@ const run = async (fn: () => Promise<unknown>, ok: string) => {
 /** `datetime-local` and `date` inputs are in the browser's time zone; send UTC. */
 const localToIso = (fd: FormData, from: string, to: string) => {
   const v = String(fd.get(from) ?? "");
-  fd.set(to, v ? new Date(v).toISOString() : "");
+  // A bare date ("2026-12-01") would otherwise be read as UTC midnight.
+  fd.set(to, v ? new Date(/^\d{4}-\d{2}-\d{2}$/.test(v) ? `${v}T00:00` : v).toISOString() : "");
   return fd;
 };
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { keywordPattern, regionsOf, scoreJob, type JobRow, type Prefs, type ScoreContext } from "./rules";
+import { boardKey, keywordPattern, onFollowedBoard, regionsOf, scoreJob, type JobRow, type Prefs, type ScoreContext } from "./rules";
 
 const job = (over: Partial<JobRow> = {}): JobRow => ({
   id: "j1",
@@ -105,5 +105,19 @@ describe("keywordPattern", () => {
     expect(keywordPattern("climate")).toBe("\\mclimate\\M");
     expect(keywordPattern("c++")).toBe("\\mc\\+\\+");
     expect(keywordPattern("machine  learning")).toBe("\\mmachine\\s+learning\\M");
+  });
+});
+
+describe("onFollowedBoard", () => {
+  const followed = new Set([boardKey("greenhouse", "Monzo")]);
+  it("keeps jobs from followed boards, ignoring token case", () => {
+    expect(onFollowedBoard({ source: "greenhouse", sourceCompany: "monzo" }, followed)).toBe(true);
+  });
+  it("hides jobs from someone else's board", () => {
+    expect(onFollowedBoard({ source: "lever", sourceCompany: "acme" }, followed)).toBe(false);
+  });
+  it("never filters aggregator or demo jobs", () => {
+    expect(onFollowedBoard({ source: "adzuna", sourceCompany: "gb" }, followed)).toBe(true);
+    expect(onFollowedBoard({ source: "demo", sourceCompany: "demo" }, followed)).toBe(true);
   });
 });

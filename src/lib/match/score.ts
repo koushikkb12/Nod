@@ -1,9 +1,10 @@
 import "server-only";
 import { and, eq, inArray, notInArray, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db";
-import { facts, jobs, matches, preferences } from "@/lib/db/schema";
+import { customBoards, facts, jobs, matches, preferences } from "@/lib/db/schema";
+import { BOARDS } from "@/lib/jobs/companies";
 import { normalise } from "@/lib/skills";
-import { keywordPattern, MIN_SCORE, regionsOf, scoreJob, type Scored } from "./rules";
+import { boardKey, keywordPattern, MIN_SCORE, onFollowedBoard, regionsOf, scoreJob, type Scored } from "./rules";
 
 const KEEP = 250;
 
@@ -19,11 +20,14 @@ export async function userSkillSet(userId: string) {
 
 const MAX_KEYWORDS = 10;
 
+/** Job ids per lower-cased keyword, shared while re-matching many users at once. */
+export type KeywordCache = Map<string, string[]>;
+
 /**
  * Which open jobs mention each preference keyword as a whole word. Runs in the
  * database so the ~9,500 ad texts never have to be loaded into memory.
  */
-async function findKeywordHits(keywords: string[]) {
+async function findKeywordHits(keywords: string[], cache?: KeywordCache) {
   const hits = new Map<string, string[]>();
   const unique = [...new Map(keywords.map((k) => [k.trim().toLowerCase(), k.trim()])).values()]
     .filter(Boolean)
@@ -31,30 +35,37 @@ async function findKeywordHits(keywords: string[]) {
   if (!unique.length) return hits;
   const db = await getDb();
   for (const keyword of unique) {
-    const pattern = keywordPattern(keyword);
-    const rows = await db
-      .select({ id: jobs.id })
-      .from(jobs)
-      .where(
-        and(
-          eq(jobs.isOpen, true),
-          sql`(${jobs.title} ~* ${pattern} or ${jobs.company} ~* ${pattern} or ${jobs.descriptionText} ~* ${pattern})`,
-        ),
-      );
-    for (const { id } of rows) hits.set(id, [...(hits.get(id) ?? []), keyword]);
+    let ids = cache?.get(keyword.toLowerCase());
+    if (!ids) {
+      const pattern = keywordPattern(keyword);
+      const rows = await db
+        .select({ id: jobs.id })
+        .from(jobs)
+        .where(
+          and(
+            eq(jobs.isOpen, true),
+            sql`(${jobs.title} ~* ${pattern} or ${jobs.company} ~* ${pattern} or ${jobs.descriptionText} ~* ${pattern})`,
+          ),
+        );
+      ids = rows.map((r) => r.id);
+      cache?.set(keyword.toLowerCase(), ids);
+    }
+    for (const id of ids) hits.set(id, [...(hits.get(id) ?? []), keyword]);
   }
   return hits;
 }
 
 /** Score every open job for one user and keep the best matches. */
-export async function computeMatches(userId: string) {
+export async function computeMatches(userId: string, opts: { keywordCache?: KeywordCache } = {}) {
   const db = await getDb();
   const [prefs] = await db.select().from(preferences).where(eq(preferences.userId, userId));
   const userSkills = await userSkillSet(userId);
   const userRegions = new Set<string>();
   for (const l of prefs?.locations ?? []) regionsOf(l).forEach((r) => userRegions.add(r));
   const excluded = new Set((prefs?.excludeCompanies ?? []).map((c) => normalise(c)));
-  const keywordHits = await findKeywordHits(prefs?.keywords ?? []);
+  const keywordHits = await findKeywordHits(prefs?.keywords ?? [], opts.keywordCache);
+  const own = await db.select({ source: customBoards.source, token: customBoards.token }).from(customBoards).where(eq(customBoards.userId, userId));
+  const followed = new Set([...BOARDS, ...own].map((b) => boardKey(b.source, b.token)));
 
   const open = await db
     .select({
@@ -62,12 +73,14 @@ export async function computeMatches(userId: string) {
       workplace: jobs.workplace, salaryMin: jobs.salaryMin, salaryMax: jobs.salaryMax,
       salaryCurrency: jobs.salaryCurrency, skills: jobs.skills, postedAt: jobs.postedAt,
       riskFlags: jobs.riskFlags, sponsorMatch: jobs.sponsorMatch, isDemo: jobs.isDemo, source: jobs.source,
+      sourceCompany: jobs.sourceCompany,
     })
     .from(jobs)
     .where(eq(jobs.isOpen, true));
 
   const scored: Scored[] = [];
   for (const job of open) {
+    if (!onFollowedBoard(job, followed)) continue;
     const s = scoreJob(job, { prefs: prefs ?? null, userSkills, userRegions, excluded, keywordHits });
     if (s && (s.score >= MIN_SCORE || job.isDemo)) scored.push(s);
   }
