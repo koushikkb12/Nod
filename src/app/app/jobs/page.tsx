@@ -9,10 +9,11 @@ import { AddJobForm } from "@/components/app/add-job";
 import { RefreshJobsButton } from "@/components/app/refresh-jobs";
 import { Badge, Button, Card, cn, Empty, Input, SectionTitle, Select } from "@/components/ui";
 import { getDb } from "@/lib/db";
-import { applications, jobs, matches } from "@/lib/db/schema";
+import { applications, jobs, matches, preferences } from "@/lib/db/schema";
 import { cleanCompany, salaryRange, SOURCE_LABEL, timeAgo } from "@/lib/format";
 import { ingestRunning, latestIngest } from "@/lib/jobs/ingest";
 import { requireUser } from "@/lib/session";
+import { MarkJobsSeen } from "@/components/app/mark-jobs-seen";
 
 export const metadata = { title: "Jobs" };
 
@@ -77,7 +78,7 @@ async function JobsPageContent({ searchParams }: PageProps<"/app/jobs">) {
     ...filterWhere(filters),
   );
   const rows = await db
-    .select({ m: matches, j: { id: jobs.id, title: jobs.title, company: jobs.company, location: jobs.location, workplace: jobs.workplace, salaryMin: jobs.salaryMin, salaryMax: jobs.salaryMax, salaryCurrency: jobs.salaryCurrency, postedAt: jobs.postedAt, source: jobs.source, isDemo: jobs.isDemo, sponsorMatch: jobs.sponsorMatch, riskFlags: jobs.riskFlags } })
+    .select({ m: matches, j: { id: jobs.id, title: jobs.title, company: jobs.company, location: jobs.location, workplace: jobs.workplace, salaryMin: jobs.salaryMin, salaryMax: jobs.salaryMax, salaryCurrency: jobs.salaryCurrency, postedAt: jobs.postedAt, firstSeenAt: jobs.firstSeenAt, source: jobs.source, isDemo: jobs.isDemo, sponsorMatch: jobs.sponsorMatch, riskFlags: jobs.riskFlags } })
     .from(matches)
     .innerJoin(jobs, eq(jobs.id, matches.jobId))
     .where(where)
@@ -93,11 +94,14 @@ async function JobsPageContent({ searchParams }: PageProps<"/app/jobs">) {
     ),
   );
   const applied = new Set((await db.select({ jobId: applications.jobId }).from(applications).where(eq(applications.userId, user.id))).map((a) => a.jobId));
+  const [seen] = await db.select({ at: preferences.jobsSeenAt }).from(preferences).where(eq(preferences.userId, user.id));
+  const isNew = (firstSeenAt: Date) => !!seen?.at && firstSeenAt > seen.at;
   const run = await latestIngest();
   const href = (params: Record<string, string>) => `/app/jobs?${new URLSearchParams({ ...keep, tab, ...params })}`;
 
   return (
     <div className="space-y-6 animate-rise">
+      <MarkJobsSeen />
       <SectionTitle eyebrow="Jobs" title="Matches for you">
         <RefreshJobsButton initiallyRunning={ingestRunning()} />
       </SectionTitle>
@@ -192,6 +196,7 @@ async function JobsPageContent({ searchParams }: PageProps<"/app/jobs">) {
                         <MatchActions jobId={j.id} status={m.status} />
                       </div>
                       <div className="mt-2.5 flex flex-wrap gap-1.5">
+                        {isNew(j.firstSeenAt) ? <Badge tone="nod">New</Badge> : null}
                         {j.isDemo ? <Badge tone="info">Demo employer · Nod can submit</Badge> : <Badge tone="outline">{SOURCE_LABEL[j.source]}</Badge>}
                         {j.workplace !== "unknown" ? <Badge tone="neutral" className="capitalize">{j.workplace}</Badge> : null}
                         {j.sponsorMatch ? (

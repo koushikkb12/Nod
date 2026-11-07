@@ -21,6 +21,7 @@ const job = (over: Partial<JobRow> = {}): JobRow => ({
 
 const prefs = (over: Partial<Prefs> = {}): Prefs => ({
   userId: "u1",
+  jobsSeenAt: null,
   titles: ["Data Analyst"],
   locations: ["London"],
   workplace: [],

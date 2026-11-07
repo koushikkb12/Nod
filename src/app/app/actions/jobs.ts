@@ -151,6 +151,16 @@ export async function removeCustomBoard(id: string) {
   refresh();
 }
 
+/** Remember when the user last looked at their jobs, for the "new" badge. */
+export async function markJobsSeen() {
+  const user = await requireUser();
+  const db = await getDb();
+  await db
+    .insert(preferences)
+    .values({ userId: user.id, jobsSeenAt: new Date() })
+    .onConflictDoUpdate({ target: preferences.userId, set: { jobsSeenAt: new Date() } });
+}
+
 /** Ask the AI why a job fits, keeping only sentences the fact guard allows. */
 export async function explainMatch(jobId: string) {
   const user = await requireUser();

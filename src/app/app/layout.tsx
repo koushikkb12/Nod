@@ -1,10 +1,10 @@
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, gt, inArray, sql } from "drizzle-orm";
 import Link from "next/link";
 import { Suspense } from "react";
 import { Wordmark } from "@/components/brand";
 import { aiConfig } from "@/lib/ai";
 import { getDb } from "@/lib/db";
-import { applications, preferences } from "@/lib/db/schema";
+import { applications, jobs, matches, preferences } from "@/lib/db/schema";
 import { getCurrentUser } from "@/lib/session";
 import { NavLinks, NavList, SignOutButton } from "./nav";
 
@@ -12,6 +12,7 @@ async function Sidebar() {
   const user = await getCurrentUser();
   let needsYou = 0;
   let paused = false;
+  let newJobs = 0;
   if (user) {
     const db = await getDb();
     const [row] = await db
@@ -19,13 +20,24 @@ async function Sidebar() {
       .from(applications)
       .where(and(eq(applications.userId, user.id), inArray(applications.status, ["drafted", "needs_user"])));
     needsYou = row?.n ?? 0;
-    const [p] = await db.select({ paused: preferences.agentPaused }).from(preferences).where(eq(preferences.userId, user.id));
+    const [p] = await db
+      .select({ paused: preferences.agentPaused, seenAt: preferences.jobsSeenAt })
+      .from(preferences)
+      .where(eq(preferences.userId, user.id));
     paused = p?.paused ?? false;
+    if (p?.seenAt) {
+      const [fresh] = await db
+        .select({ n: sql<number>`count(*)::int` })
+        .from(matches)
+        .innerJoin(jobs, eq(jobs.id, matches.jobId))
+        .where(and(eq(matches.userId, user.id), eq(matches.status, "new"), eq(jobs.isOpen, true), gt(jobs.firstSeenAt, p.seenAt)));
+      newJobs = fresh?.n ?? 0;
+    }
   }
   const ai = aiConfig();
   return (
     <>
-      <NavLinks needsYou={needsYou} />
+      <NavLinks needsYou={needsYou} newJobs={newJobs} />
       <div className="mt-auto hidden space-y-4 lg:block">
         <div className="rounded-[12px] border border-line bg-card p-3 text-[12px] leading-relaxed text-muted">
           <p className="flex items-center gap-2 font-medium text-ink">

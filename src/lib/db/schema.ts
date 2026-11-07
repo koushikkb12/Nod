@@ -148,6 +148,8 @@ export const preferences = pgTable("preferences", {
   dailyCap: integer().notNull().default(10),
   perCompanyMonthlyCap: integer().notNull().default(2),
   agentPaused: boolean().notNull().default(false),
+  /** When the user last opened the Jobs page, for the "new" badge. */
+  jobsSeenAt: ts(),
   updatedAt: ts().notNull().defaultNow(),
 });
 
