@@ -1,8 +1,10 @@
 import "server-only";
 import { getDb } from "@/lib/db";
 import { preferences } from "@/lib/db/schema";
-import { computeMatches } from "@/lib/match/score";
+import { computeMatches, type KeywordCache } from "@/lib/match/score";
 import { ingestRunning, startIngest } from "./ingest";
+import { searchTerms } from "./search-terms";
+import { ADZUNA_MAX_TITLES } from "./sources";
 
 /** Hours between background job refreshes. NOD_REFRESH_HOURS=0 turns it off. */
 export function refreshHours() {
@@ -12,18 +14,23 @@ export function refreshHours() {
   return Number.isFinite(n) && n > 0 ? Math.max(1, n) : 0;
 }
 
+let round = 0;
+
 async function refreshAll() {
   if (ingestRunning()) return;
   const db = await getDb();
   const users = await db.select({ userId: preferences.userId, titles: preferences.titles, locations: preferences.locations }).from(preferences);
-  const uniq = (v: string[]) => [...new Set(v.map((x) => x.trim()).filter(Boolean))].slice(0, 10);
-  startIngest({
-    titles: uniq(users.flatMap((u) => u.titles)),
-    locations: uniq(users.flatMap((u) => u.locations)),
+  const started = startIngest({
+    titles: searchTerms(users.map((u) => u.titles), ADZUNA_MAX_TITLES, round),
+    locations: searchTerms(users.map((u) => u.locations), 10, 0),
     onDone: async () => {
-      for (const u of users) await computeMatches(u.userId).catch((err) => console.error("[nod] re-match failed", err));
+      const keywordCache: KeywordCache = new Map();
+      for (const u of users) {
+        await computeMatches(u.userId, { keywordCache }).catch((err) => console.error("[nod] re-match failed", err));
+      }
     },
   });
+  if (started) round += 1;
 }
 
 let timer: NodeJS.Timeout | undefined;

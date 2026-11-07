@@ -4,6 +4,7 @@ import { and, asc, count, desc, eq, gte, inArray } from "drizzle-orm";
 import { ArrowRight, Check } from "lucide-react";
 import Link from "next/link";
 import { CompanyTile, ScoreRing } from "@/components/brand";
+import { LocalTime } from "@/components/app/local-time";
 import { RefreshJobsButton } from "@/components/app/refresh-jobs";
 import { Badge, buttonVariants, Card, cn, SectionTitle } from "@/components/ui";
 import { getDb } from "@/lib/db";
@@ -138,7 +139,7 @@ async function HomePageContent() {
                   <Card className="mb-3 flex items-center gap-4 p-4 hover:shadow-[var(--shadow-lift)]">
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-medium">{iv.title}</p>
-                      <p className="text-[13px] text-muted">{iv.startsAt.toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" })} UTC</p>
+                      <p className="text-[13px] text-muted"><LocalTime iso={iv.startsAt.toISOString()} /></p>
                     </div>
                     <Badge tone="traced">Interview</Badge>
                   </Card>

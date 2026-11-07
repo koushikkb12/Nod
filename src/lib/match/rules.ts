@@ -32,6 +32,19 @@ export function regionsOf(location: string): Set<string> {
   return out;
 }
 
+/* ------------------------------- Boards -------------------------------- */
+
+export const boardKey = (source: string, token: string) => `${source}:${token.toLowerCase()}`;
+
+/**
+ * Jobs from Greenhouse, Lever and Ashby boards only reach users who follow the
+ * board: the built-in ones, plus boards the user added. Custom boards stay private.
+ */
+export function onFollowedBoard(job: { source: string; sourceCompany: string }, followed: Set<string>) {
+  const ats = job.source === "greenhouse" || job.source === "lever" || job.source === "ashby";
+  return !ats || followed.has(boardKey(job.source, job.sourceCompany));
+}
+
 /* ----------------------------- Scoring --------------------------------- */
 
 export type Scored = {

@@ -73,6 +73,10 @@ export async function addInterview(formData: FormData) {
 export async function deleteInterview(interviewId: string) {
   const user = await requireUser();
   const db = await getDb();
-  await db.delete(interviews).where(and(eq(interviews.id, interviewId), eq(interviews.userId, user.id)));
+  const [gone] = await db
+    .delete(interviews)
+    .where(and(eq(interviews.id, interviewId), eq(interviews.userId, user.id)))
+    .returning({ applicationId: interviews.applicationId, title: interviews.title });
+  if (gone) await logEvent(user.id, gone.applicationId, "interview", `Removed “${gone.title}”.`);
   refresh();
 }

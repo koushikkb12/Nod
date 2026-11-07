@@ -328,11 +328,14 @@ export function adzunaEnabled() {
 }
 
 /** UK search through Adzuna for each preferred title (and location). */
+/** Adzuna searches per refresh, one per job title. */
+export const ADZUNA_MAX_TITLES = 4;
+
 export async function fetchAdzuna(titles: string[], locations: string[]): Promise<NormalizedJob[]> {
   if (!adzunaEnabled()) return [];
   const out: NormalizedJob[] = [];
   const where = locations.find((l) => !/remote/i.test(l)) ?? "";
-  for (const what of titles.slice(0, 4)) {
+  for (const what of titles.slice(0, ADZUNA_MAX_TITLES)) {
     const params = new URLSearchParams({
       app_id: process.env.ADZUNA_APP_ID!,
       app_key: process.env.ADZUNA_APP_KEY!,
