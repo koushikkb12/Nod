@@ -14,11 +14,14 @@ export async function POST(req: Request, ctx: RouteContext<"/api/demo-ats/[jobId
   const origin = req.headers.get("origin") ?? "";
   const referer = req.headers.get("referer") ?? "";
   const baseUrl = process.env.NOD_BASE_URL ?? process.env.BETTER_AUTH_URL ?? "http://localhost:3000";
+  // With Referrer-Policy: no-referrer, browsers send `Origin: null` even on
+  // same-origin form posts; Sec-Fetch-Site then tells us where it came from.
+  const sameOriginNull = origin === "null" && req.headers.get("sec-fetch-site") === "same-origin";
   let requestOrigin: string;
   let expectedOrigin: string;
   try {
-    requestOrigin = origin ? new URL(origin).origin : referer ? new URL(referer).origin : "";
     expectedOrigin = new URL(baseUrl).origin;
+    requestOrigin = sameOriginNull ? expectedOrigin : origin ? new URL(origin).origin : referer ? new URL(referer).origin : "";
   } catch {
     return new Response("Forbidden: invalid origin", { status: 403 });
   }
