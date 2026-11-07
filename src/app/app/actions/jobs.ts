@@ -1,14 +1,14 @@
 "use server";
 
-import { and, eq, inArray, notInArray } from "drizzle-orm";
+import { and, count, eq, inArray, notInArray } from "drizzle-orm";
 import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 import { getDb } from "@/lib/db";
-import { applications, matches, preferences } from "@/lib/db/schema";
+import { applications, customBoards, matches, preferences } from "@/lib/db/schema";
 import { generateDraft } from "@/lib/draft/generate";
 import { latestIngest, saveJobs, startIngest } from "@/lib/jobs/ingest";
-import { parseJobUrl } from "@/lib/jobs/job-url";
-import { fetchJobByRef } from "@/lib/jobs/sources";
+import { parseBoardUrl, parseJobUrl } from "@/lib/jobs/job-url";
+import { fetchBoard, fetchJobByRef, resolveBoard } from "@/lib/jobs/sources";
 import { computeMatches, matchAddedJob } from "@/lib/match/score";
 import { summarizeMatch } from "@/lib/match/summary";
 import { logEvent } from "@/lib/apps";
@@ -107,6 +107,48 @@ export async function addJobFromUrl(_prev: { error?: string } | null, formData: 
   await saveJobs([job]);
   await matchAddedJob(user.id, job.id);
   redirect(`/app/jobs/${encodeURIComponent(job.id)}`);
+}
+
+const MAX_CUSTOM_BOARDS = 25;
+
+/** Add a company's Greenhouse, Lever or Ashby board to the boards Nod reads. */
+export async function addCustomBoard(_prev: { error?: string; ok?: string } | null, formData: FormData) {
+  const user = await requireUser();
+  const ref = parseBoardUrl(String(formData.get("url") ?? ""));
+  if (!ref) return { error: "Paste a careers page link from Greenhouse, Lever or Ashby." };
+  const db = await getDb();
+  const [{ n }] = await db.select({ n: count() }).from(customBoards).where(eq(customBoards.userId, user.id));
+  if (n >= MAX_CUSTOM_BOARDS) return { error: `You can add up to ${MAX_CUSTOM_BOARDS} boards.` };
+  let board;
+  try {
+    board = await resolveBoard(ref);
+  } catch {
+    return { error: "Couldn't reach that job board. Try again in a moment." };
+  }
+  if (!board) return { error: "That board wasn't found. Check the link." };
+  const name = String(formData.get("name") ?? "").trim().slice(0, 80) || board.name;
+  await db
+    .insert(customBoards)
+    .values({ id: newId("brd"), userId: user.id, source: board.source, token: board.token, name })
+    .onConflictDoNothing();
+  let found = 0;
+  try {
+    const list = await fetchBoard({ ...board, name });
+    await saveJobs(list);
+    found = list.length;
+    await computeMatches(user.id);
+  } catch (err) {
+    console.error("[nod] custom board fetch failed", err);
+  }
+  refresh();
+  return { ok: `Added ${name}. ${found} open ${found === 1 ? "job" : "jobs"} found.` };
+}
+
+export async function removeCustomBoard(id: string) {
+  const user = await requireUser();
+  const db = await getDb();
+  await db.delete(customBoards).where(and(eq(customBoards.id, id), eq(customBoards.userId, user.id)));
+  refresh();
 }
 
 /** Ask the AI why a job fits, keeping only sentences the fact guard allows. */

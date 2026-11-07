@@ -208,6 +208,22 @@ export const jobs = pgTable(
   (t) => [index().on(t.dedupeKey), index().on(t.isOpen)],
 );
 
+/** Extra company boards a user asked Nod to read alongside the built-in list. */
+export const customBoards = pgTable(
+  "custom_boards",
+  {
+    id: text().primaryKey(),
+    userId: text()
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    source: text().$type<"greenhouse" | "lever" | "ashby">().notNull(),
+    token: text().notNull(),
+    name: text().notNull(),
+    createdAt: ts().notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex().on(t.userId, t.source, t.token)],
+);
+
 export const ingestRuns = pgTable("ingest_runs", {
   id: bigserial({ mode: "number" }).primaryKey(),
   startedAt: ts().notNull().defaultNow(),

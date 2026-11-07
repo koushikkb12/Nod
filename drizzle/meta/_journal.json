@@ -50,6 +50,13 @@
       "when": 1794061584596,
       "tag": "0006_application_tracking",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1794061658592,
+      "tag": "0007_custom_boards",
+      "breakpoints": true
     }
   ]
 }

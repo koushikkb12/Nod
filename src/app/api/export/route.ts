@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
-import { answers, applications, approvals, events, facts, interviews, matches, preferences, profiles, submissions } from "@/lib/db/schema";
+import { answers, applications, approvals, customBoards, events, facts, interviews, matches, preferences, profiles, submissions } from "@/lib/db/schema";
 import { getCurrentUser } from "@/lib/session";
 
 /** Everything Nod holds about the signed-in user, as JSON (UK GDPR access). */
@@ -16,6 +16,7 @@ export async function GET() {
     preferences: (await db.select().from(preferences).where(by(preferences)))[0] ?? null,
     facts: await db.select().from(facts).where(by(facts)),
     answerLibrary: await db.select().from(answers).where(by(answers)),
+    customBoards: await db.select().from(customBoards).where(by(customBoards)),
     matches: await db.select().from(matches).where(by(matches)),
     applications: await db.select().from(applications).where(by(applications)),
     interviews: await db.select().from(interviews).where(by(interviews)),

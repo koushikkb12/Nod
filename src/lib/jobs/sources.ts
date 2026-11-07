@@ -2,7 +2,7 @@ import "server-only";
 import type { FormQuestion } from "@/lib/types";
 import { detectWorkplace, finalize, type NormalizedJob } from "./normalize";
 import { BOARDS, type Board } from "./companies";
-import type { JobRef } from "./job-url";
+import type { BoardRef, JobRef } from "./job-url";
 
 const UA = "NodJobAgent/0.1 (+consent-first job search; contact: local)";
 
@@ -247,6 +247,32 @@ function fromAshby(board: Board, j: AshbyJob): NormalizedJob {
 
 const titleCase = (token: string) =>
   token.replace(/[-_.]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+
+/** Check a board exists and work out the company's name. Null if not found. */
+export async function resolveBoard(ref: BoardRef): Promise<Board | null> {
+  const known = BOARDS.find((b) => b.source === ref.source && b.token.toLowerCase() === ref.token.toLowerCase());
+  if (known) return known;
+  const token = encodeURIComponent(ref.token);
+  const exists = (err: unknown) => {
+    if (err instanceof Error && /^404 /.test(err.message)) return null;
+    throw err;
+  };
+  if (ref.source === "greenhouse") {
+    const meta = await getJson<{ name?: string }>(`https://boards-api.greenhouse.io/v1/boards/${token}`, 20_000).catch(exists);
+    return meta ? { ...ref, name: meta.name?.trim() || titleCase(ref.token) } : null;
+  }
+  const url =
+    ref.source === "lever"
+      ? `https://api.lever.co/v0/postings/${token}?mode=json&limit=1`
+      : `https://api.ashbyhq.com/posting-api/job-board/${token}`;
+  const data = await getJson<unknown>(url, 20_000).catch(exists);
+  return data ? { ...ref, name: titleCase(ref.token) } : null;
+}
+
+/** All open jobs on one board. */
+export function fetchBoard(board: Board) {
+  return board.source === "greenhouse" ? fetchGreenhouse(board) : board.source === "lever" ? fetchLever(board) : fetchAshby(board);
+}
 
 /** Fetch one job from its ATS's public API, for jobs pasted in by the user. */
 export async function fetchJobByRef(ref: JobRef): Promise<NormalizedJob | null> {

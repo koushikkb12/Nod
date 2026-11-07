@@ -39,3 +39,25 @@ export function parseJobUrl(input: string): JobRef | null {
   }
   return null;
 }
+
+export type BoardRef = { source: JobRef["source"]; token: string };
+
+/** Recognise a company's job board link (or any job link on that board). */
+export function parseBoardUrl(input: string): BoardRef | null {
+  const job = parseJobUrl(input);
+  if (job) return { source: job.source, token: job.token };
+  let url: URL;
+  try {
+    url = new URL(input.trim());
+  } catch {
+    return null;
+  }
+  if (url.protocol !== "https:" && url.protocol !== "http:") return null;
+  const host = url.hostname.toLowerCase();
+  const token = decodeURIComponent(url.pathname.split("/").filter(Boolean)[0] ?? "");
+  if (!SLUG.test(token) || token === "embed") return null;
+  if (host === "boards.greenhouse.io" || host === "job-boards.greenhouse.io" || host === "job-boards.eu.greenhouse.io") return { source: "greenhouse", token };
+  if (host === "jobs.lever.co") return { source: "lever", token };
+  if (host === "jobs.ashbyhq.com") return { source: "ashby", token };
+  return null;
+}

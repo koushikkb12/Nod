@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseJobUrl } from "./job-url";
+import { parseBoardUrl, parseJobUrl } from "./job-url";
 
 const uuid = "6ed76ce8-4156-4b60-b120-403538bd66cd";
 
@@ -26,5 +26,20 @@ describe("parseJobUrl", () => {
     expect(parseJobUrl("https://jobs.lever.co/palantir/not-a-uuid")).toBeNull();
     expect(parseJobUrl("ftp://jobs.lever.co/palantir/" + uuid)).toBeNull();
     expect(parseJobUrl("https://evil.example/jobs.lever.co/palantir/" + uuid)).toBeNull();
+  });
+});
+
+describe("parseBoardUrl", () => {
+  it("reads board links and job links", () => {
+    expect(parseBoardUrl("https://job-boards.greenhouse.io/monzo")).toEqual({ source: "greenhouse", token: "monzo" });
+    expect(parseBoardUrl("https://jobs.lever.co/palantir/")).toEqual({ source: "lever", token: "palantir" });
+    expect(parseBoardUrl("https://jobs.ashbyhq.com/ramp")).toEqual({ source: "ashby", token: "ramp" });
+    expect(parseBoardUrl(`https://jobs.lever.co/palantir/${uuid}`)).toEqual({ source: "lever", token: "palantir" });
+  });
+
+  it("rejects other links", () => {
+    expect(parseBoardUrl("https://boards.greenhouse.io/embed/job_board")).toBeNull();
+    expect(parseBoardUrl("https://example.com/monzo")).toBeNull();
+    expect(parseBoardUrl("https://jobs.lever.co/")).toBeNull();
   });
 });
