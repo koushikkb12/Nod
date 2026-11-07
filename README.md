@@ -30,8 +30,9 @@ A sample CV is included at `samples/alex-morgan-cv.pdf`; `npm run sample-cv` reg
 | Area | What Nod does |
 |---|---|
 | **CV intake** | Parses PDF, DOCX or TXT into a **fact bank**: roles, achievements, skills, education and certifications. Every fact starts unconfirmed, and Nod won't use it until you confirm it. |
-| **Job discovery** | Reads the public posting APIs of employers' applicant tracking systems: Greenhouse, Lever and Ashby. Adzuna (UK aggregator) is optional. It deduplicates postings, marks closed ones, and sanitises job ad HTML. |
-| **Matching** | Applies hard filters (location, workplace, salary floor, excluded companies, sponsorship), then scores skills, title and seniority, with a small boost for your preference keywords. Each score is explained: matched and missing skills, reasons and warnings. The Jobs page filters by workplace, recency, score, source, stated salary and licensed sponsors. |
+| **Job discovery** | Reads the public posting APIs of employers' applicant tracking systems: Greenhouse, Lever and Ashby. Adzuna (UK aggregator) is optional. It deduplicates postings, marks closed ones, and sanitises job ad HTML. You can paste a single Greenhouse, Lever or Ashby job link, or add a whole company board in Preferences. While the server runs it refreshes jobs every 6 hours (`NOD_REFRESH_HOURS`), and the Jobs page marks postings that are new since your last visit. |
+| **Matching** | Applies hard filters (location, workplace, salary floor, excluded companies, sponsorship), then scores skills, title and seniority, with a small boost for your preference keywords. Each score is explained: matched and missing skills, reasons and warnings. The Jobs page filters by workplace, recency, score, source, stated salary and licensed sponsors. With an AI key, a "Why this fits" summary is written for any match and filtered through the fact guard. |
+| **Insights** | Shows the skills your matches ask for most that aren't in your facts, your strongest skills, an application funnel (drafted, applied, interviewing, offer) with response rates, and weekly activity. |
 | **Signals** | Checks employers against the UK Home Office register of licensed sponsors. Flags scam wording (upfront fees, payment requests, off-platform contact), stale or very short ads, and hidden instructions aimed at AI tools. |
 | **Drafting** | Builds a tailored CV, a cover letter and form answers. Every sentence cites the facts it relies on. A guard blocks any sentence with numbers, skills, employers or titles that aren't in your confirmed facts. |
 | **Form answers** | Fills answers from your profile, preferences and answer library. It never guesses: unknown questions are marked *Needs you*, and diversity questions default to "prefer not to say". |
@@ -39,6 +40,7 @@ A sample CV is included at `samples/alex-morgan-cv.pdf`; `npm run sample-cv` reg
 | **Submission** | Playwright fills the employer's form with exactly the approved payload. It re-checks the hash first, and stops with *Needs you* if the live form asks anything new. It saves screenshots as receipts. |
 | **Manual mode** | For real employers, Nod gives you a kit (PDF CV, cover letter and answers) to apply yourself. You then mark the application as applied. |
 | **Controls & data** | Agent pause switch, a daily submission limit and a per-company monthly limit. Also an application tracker with event history, a full JSON export and account deletion. |
+| **Tracking & interviews** | Each sent application has private notes (never sent to the employer), a follow-up date, and interviews you can download as an `.ics` calendar file. The dashboard lists upcoming interviews and suggests a follow-up after 10 days with no news. A prep pack lists likely questions, with talking points taken word for word from your confirmed facts. |
 
 ## Safety switches
 
