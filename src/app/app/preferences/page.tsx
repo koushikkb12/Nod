@@ -1,12 +1,13 @@
 import { Suspense } from "react";
 import { PageSkeleton } from "@/components/app/page-skeleton";
-import { eq } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { saveAgentControls, savePreferences } from "@/app/app/actions/jobs";
+import { CustomBoards } from "@/components/app/custom-boards";
 import { PauseSwitch } from "@/components/app/pause-switch";
 import { SubmitButton } from "@/components/submit-button";
 import { Card, Field, Input, SectionTitle, Select, Textarea } from "@/components/ui";
 import { getDb } from "@/lib/db";
-import { preferences } from "@/lib/db/schema";
+import { customBoards, preferences } from "@/lib/db/schema";
 import { requireUser } from "@/lib/session";
 
 export const metadata = { title: "Preferences" };
@@ -36,6 +37,11 @@ async function PreferencesPageContent() {
   const user = await requireUser();
   const db = await getDb();
   const [p] = await db.select().from(preferences).where(eq(preferences.userId, user.id));
+  const boards = await db
+    .select({ id: customBoards.id, name: customBoards.name, source: customBoards.source, token: customBoards.token })
+    .from(customBoards)
+    .where(eq(customBoards.userId, user.id))
+    .orderBy(asc(customBoards.createdAt));
   const join = (v?: string[]) => (v ?? []).join(", ");
 
   return (
@@ -106,7 +112,7 @@ async function PreferencesPageContent() {
               <input type="checkbox" name="willingToRelocate" defaultChecked={p?.willingToRelocate ?? false} className="size-4 accent-ink" />
               I'm willing to relocate
             </label>
-            <Field label="Keywords (optional)" htmlFor="keywords">
+            <Field label="Keywords (optional)" htmlFor="keywords" hint="Matches that mention these get a small boost, and the match explains why.">
               <Textarea id="keywords" name="keywords" defaultValue={join(p?.keywords)} className="min-h-16" placeholder="climate, healthcare, fintech" />
             </Field>
           </Card>
@@ -116,6 +122,15 @@ async function PreferencesPageContent() {
         </form>
 
         <aside className="space-y-4">
+          <Card className="space-y-4 p-5">
+            <div>
+              <h2 className="font-medium">Your company boards</h2>
+              <p className="text-[13px] text-muted">
+                Want a company Nod doesn&apos;t cover? Paste its Greenhouse, Lever or Ashby careers link. Nod reads it on every refresh.
+              </p>
+            </div>
+            <CustomBoards boards={boards} />
+          </Card>
           <Card className="space-y-4 p-5">
             <div>
               <h2 className="font-medium">Agent controls</h2>

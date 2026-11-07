@@ -1,16 +1,17 @@
 import { Suspense } from "react";
 import { PageSkeleton } from "@/components/app/page-skeleton";
-import { and, count, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, inArray } from "drizzle-orm";
 import { ArrowRight, Check } from "lucide-react";
 import Link from "next/link";
 import { CompanyTile, ScoreRing } from "@/components/brand";
 import { RefreshJobsButton } from "@/components/app/refresh-jobs";
 import { Badge, buttonVariants, Card, cn, SectionTitle } from "@/components/ui";
 import { getDb } from "@/lib/db";
-import { applications, events, facts, jobs, matches, preferences, profiles } from "@/lib/db/schema";
+import { applications, events, facts, interviews, jobs, matches, preferences, profiles } from "@/lib/db/schema";
 import { cleanCompany, timeAgo } from "@/lib/format";
 import { ingestRunning, latestIngest } from "@/lib/jobs/ingest";
 import { requireUser } from "@/lib/session";
+import { followUpDue } from "@/lib/tracking";
 import { APP_STATUS_LABEL } from "@/lib/types";
 
 export const metadata = { title: "Home" };
@@ -28,14 +29,21 @@ async function HomePageContent() {
     .from(matches)
     .where(and(eq(matches.userId, user.id), inArray(matches.status, ["new", "shortlisted"])));
   const apps = await db
-    .select({ id: applications.id, status: applications.status, updatedAt: applications.updatedAt, title: jobs.title, company: jobs.company })
+    .select({ id: applications.id, status: applications.status, updatedAt: applications.updatedAt, followUpAt: applications.followUpAt, title: jobs.title, company: jobs.company })
     .from(applications)
     .innerJoin(jobs, eq(jobs.id, applications.jobId))
     .where(eq(applications.userId, user.id))
     .orderBy(desc(applications.updatedAt));
   const waiting = apps.filter((a) => a.status === "drafted" || a.status === "needs_user");
   const sent = apps.filter((a) => ["submitted", "interviewing", "offer", "rejected"].includes(a.status)).length;
-  const interviews = apps.filter((a) => a.status === "interviewing" || a.status === "offer").length;
+  const interviewCount = apps.filter((a) => a.status === "interviewing" || a.status === "offer").length;
+  const followUps = apps.filter((a) => followUpDue(a));
+  const upcoming = await db
+    .select({ id: interviews.id, applicationId: interviews.applicationId, title: interviews.title, startsAt: interviews.startsAt })
+    .from(interviews)
+    .where(and(eq(interviews.userId, user.id), gte(interviews.startsAt, new Date())))
+    .orderBy(asc(interviews.startsAt))
+    .limit(3);
   const top = await db
     .select({ jobId: matches.jobId, score: matches.score, reasons: matches.reasons, title: jobs.title, company: jobs.company, location: jobs.location, isDemo: jobs.isDemo })
     .from(matches)
@@ -90,7 +98,7 @@ async function HomePageContent() {
           ["Waiting for your nod", waiting.length, "/app/applications"],
           ["Matches", matchCount, "/app/jobs"],
           ["Applications sent", sent, "/app/applications"],
-          ["Interviews & offers", interviews, "/app/applications"],
+          ["Interviews & offers", interviewCount, "/app/applications"],
         ].map(([label, value, href], i) => (
           <Link key={label as string} href={href as string}>
             <Card className={cn("p-5 transition-shadow hover:shadow-[var(--shadow-lift)]", i === 0 && Number(value) > 0 && "border-nod-deep bg-nod/30")}>
@@ -116,6 +124,37 @@ async function HomePageContent() {
                     </div>
                     <Badge tone={a.status === "needs_user" ? "warn" : "nod"}>{APP_STATUS_LABEL[a.status]}</Badge>
                     <ArrowRight className="size-4 text-muted" />
+                  </Card>
+                </Link>
+              ))}
+            </div>
+          ) : null}
+
+          {upcoming.length || followUps.length ? (
+            <div className="space-y-3">
+              <h2 className="text-[13px] font-medium uppercase tracking-[0.12em] text-muted">Coming up</h2>
+              {upcoming.map((iv) => (
+                <Link key={iv.id} href={`/app/applications/${iv.applicationId}`}>
+                  <Card className="mb-3 flex items-center gap-4 p-4 hover:shadow-[var(--shadow-lift)]">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium">{iv.title}</p>
+                      <p className="text-[13px] text-muted">{iv.startsAt.toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" })} UTC</p>
+                    </div>
+                    <Badge tone="traced">Interview</Badge>
+                  </Card>
+                </Link>
+              ))}
+              {followUps.slice(0, 4).map((a) => (
+                <Link key={a.id} href={`/app/applications/${a.id}`}>
+                  <Card className="mb-3 flex items-center gap-4 p-4 hover:shadow-[var(--shadow-lift)]">
+                    <CompanyTile name={a.company} />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium">{a.title}</p>
+                      <p className="truncate text-[13px] text-muted">
+                        {cleanCompany(a.company)} · {a.followUpAt ? "Your reminder is due" : `No news since ${timeAgo(a.updatedAt)}`}
+                      </p>
+                    </div>
+                    <Badge tone="warn">Follow up</Badge>
                   </Card>
                 </Link>
               ))}

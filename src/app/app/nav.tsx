@@ -1,6 +1,6 @@
 "use client";
 
-import { Briefcase, FileText, Home, LogOut, ScrollText, SlidersHorizontal, Send } from "lucide-react";
+import { BarChart3, Briefcase, FileText, Home, LogOut, ScrollText, SlidersHorizontal, Send } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
@@ -10,17 +10,18 @@ const LINKS = [
   { href: "/app", label: "Home", icon: Home, exact: true },
   { href: "/app/jobs", label: "Jobs", icon: Briefcase },
   { href: "/app/applications", label: "Applications", icon: Send },
+  { href: "/app/insights", label: "Insights", icon: BarChart3 },
   { href: "/app/profile", label: "CV & facts", icon: FileText },
   { href: "/app/preferences", label: "Preferences", icon: SlidersHorizontal },
   { href: "/app/ledger", label: "Consent ledger", icon: ScrollText },
 ] as const;
 
-export function NavLinks({ needsYou }: { needsYou?: number }) {
-  return <NavList path={usePathname()} needsYou={needsYou} />;
+export function NavLinks({ needsYou, newJobs }: { needsYou?: number; newJobs?: number }) {
+  return <NavList path={usePathname()} needsYou={needsYou} newJobs={newJobs} />;
 }
 
 /** Plain nav without the current-page highlight, for loading states. */
-export function NavList({ path, needsYou }: { path: string; needsYou?: number }) {
+export function NavList({ path, needsYou, newJobs }: { path: string; needsYou?: number; newJobs?: number }) {
   return (
     <nav className="flex gap-1 overflow-x-auto lg:flex-col">
       {LINKS.map((l) => {
@@ -36,6 +37,11 @@ export function NavList({ path, needsYou }: { path: string; needsYou?: number })
           >
             <l.icon className="size-4" />
             <span className="flex-1">{l.label}</span>
+            {l.href === "/app/jobs" && newJobs && !active ? (
+              <span className="rounded-full bg-traced-bg px-1.5 font-mono text-[11px] text-traced" title="New since your last visit">
+                {newJobs > 99 ? "99+" : newJobs}
+              </span>
+            ) : null}
             {l.href === "/app/applications" && needsYou ? (
               <span className={cn("rounded-full px-1.5 font-mono text-[11px]", active ? "bg-nod text-ink" : "bg-nod text-ink")}>{needsYou}</span>
             ) : null}

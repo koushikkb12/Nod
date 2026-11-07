@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
     "db:generate": "drizzle-kit generate",
     "boards:check": "tsx scripts/check-boards.ts",
     "sample-cv": "tsx scripts/make-sample-cv.ts"
@@ -25,8 +26,8 @@
     "lucide-react": "^1.53.0",
     "mammoth": "^1.13.0",
     "next": "16.4.0",
-    "playwright": "^1.64.0",
     "pg": "^8.16.0",
+    "playwright": "^1.64.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "sanitize-html": "^2.18.0",
@@ -48,6 +49,7 @@
     "eslint-config-next": "16.4.0",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^3.2.7"
   }
 }

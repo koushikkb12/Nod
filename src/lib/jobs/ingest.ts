@@ -1,10 +1,10 @@
 import "server-only";
 import { and, desc, eq, inArray, notInArray, sql } from "drizzle-orm";
 import { compactDb, getDb } from "@/lib/db";
-import { ingestRuns, jobs } from "@/lib/db/schema";
+import { customBoards, ingestRuns, jobs } from "@/lib/db/schema";
 import { BOARDS, type Board } from "./companies";
 import type { NormalizedJob } from "./normalize";
-import { adzunaEnabled, fetchAdzuna, fetchAshby, fetchGreenhouse, fetchLever } from "./sources";
+import { adzunaEnabled, fetchAdzuna, fetchBoard } from "./sources";
 import { ensureSponsorRegister, sponsorMatch } from "./sponsors";
 
 const CONCURRENCY = 6;
@@ -99,6 +99,11 @@ async function withSponsors(list: NormalizedJob[]) {
   return list.map((j) => ({ ...j, sponsorMatch: byCompany.get(j.company) ?? null }));
 }
 
+/** Save jobs fetched outside a full ingest, such as a link the user pasted. */
+export async function saveJobs(list: NormalizedJob[]) {
+  await upsert(await withSponsors(list));
+}
+
 /** Mark jobs from a board that no longer appear in its feed as closed. */
 async function closeMissing(board: Board, seenIds: string[]) {
   const db = await getDb();
@@ -115,6 +120,19 @@ async function closeMissing(board: Board, seenIds: string[]) {
     )
     .returning({ id: jobs.id });
   return closed.length;
+}
+
+/** Built-in boards plus every board users added, without duplicates. */
+async function allBoards(): Promise<Board[]> {
+  const db = await getDb();
+  const extra = await db.selectDistinctOn([customBoards.source, customBoards.token], {
+    source: customBoards.source,
+    token: customBoards.token,
+    name: customBoards.name,
+  }).from(customBoards);
+  const key = (b: Board) => `${b.source}:${b.token.toLowerCase()}`;
+  const seen = new Set(BOARDS.map(key));
+  return [...BOARDS, ...extra.filter((b) => !seen.has(key(b)) && seen.add(key(b)))];
 }
 
 async function runIngest(opts: { titles: string[]; locations: string[] }) {
@@ -136,15 +154,12 @@ async function runIngest(opts: { titles: string[]; locations: string[] }) {
       stats.errors.push(`Sponsor register: ${err instanceof Error ? err.message : String(err)}`);
     });
 
-    const queue = [...BOARDS];
+    const queue = await allBoards();
     const worker = async () => {
       for (let board = queue.shift(); board; board = queue.shift()) {
         const s = (stats.sources[board.source] ??= { boards: 0, jobs: 0, errors: 0 });
         try {
-          const fetched =
-            board.source === "greenhouse" ? await fetchGreenhouse(board)
-            : board.source === "lever" ? await fetchLever(board)
-            : await fetchAshby(board);
+          const fetched = await fetchBoard(board);
           const list = await withSponsors(fetched);
           await upsert(list);
           stats.closed += await closeMissing(board, list.map((j) => j.id));

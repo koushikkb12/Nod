@@ -43,6 +43,27 @@
       "when": 1791599125598,
       "tag": "0005_auth_rate_limit_id",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794061584596,
+      "tag": "0006_application_tracking",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1794061658592,
+      "tag": "0007_custom_boards",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1794061688340,
+      "tag": "0008_jobs_seen_at",
+      "breakpoints": true
     }
   ]
 }

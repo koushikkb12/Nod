@@ -1,0 +1,1 @@
+ALTER TABLE "preferences" ADD COLUMN "jobs_seen_at" timestamp with time zone;

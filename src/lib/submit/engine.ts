@@ -136,7 +136,7 @@ async function submitToForm(input: {
       await context.addCookies([{
         name: "nod_demo_submission",
         value: input.demoToken,
-        url: origin.origin,
+        domain: origin.hostname,
         path: "/api/demo-ats",
         httpOnly: true,
         secure: origin.protocol === "https:",

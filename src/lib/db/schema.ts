@@ -148,6 +148,8 @@ export const preferences = pgTable("preferences", {
   dailyCap: integer().notNull().default(10),
   perCompanyMonthlyCap: integer().notNull().default(2),
   agentPaused: boolean().notNull().default(false),
+  /** When the user last opened the Jobs page, for the "new" badge. */
+  jobsSeenAt: ts(),
   updatedAt: ts().notNull().defaultNow(),
 });
 
@@ -206,6 +208,22 @@ export const jobs = pgTable(
     isDemo: boolean().notNull().default(false),
   },
   (t) => [index().on(t.dedupeKey), index().on(t.isOpen)],
+);
+
+/** Extra company boards a user asked Nod to read alongside the built-in list. */
+export const customBoards = pgTable(
+  "custom_boards",
+  {
+    id: text().primaryKey(),
+    userId: text()
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    source: text().$type<"greenhouse" | "lever" | "ashby">().notNull(),
+    token: text().notNull(),
+    name: text().notNull(),
+    createdAt: ts().notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex().on(t.userId, t.source, t.token)],
 );
 
 export const ingestRuns = pgTable("ingest_runs", {
@@ -268,10 +286,32 @@ export const applications = pgTable(
     draft: jsonb().$type<Draft>().notNull(),
     approvedHash: text(),
     cvPdfPath: text(),
+    /** Private notes. Never part of the approved payload. */
+    notes: text().notNull().default(""),
+    followUpAt: ts(),
     createdAt: ts().notNull().defaultNow(),
     updatedAt: ts().notNull().defaultNow(),
   },
   (t) => [index().on(t.userId, t.updatedAt)],
+);
+
+export const interviews = pgTable(
+  "interviews",
+  {
+    id: text().primaryKey(),
+    applicationId: text()
+      .notNull()
+      .references(() => applications.id, { onDelete: "cascade" }),
+    userId: text()
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    title: text().notNull(),
+    startsAt: ts().notNull(),
+    durationMinutes: integer().notNull().default(60),
+    location: text().notNull().default(""),
+    createdAt: ts().notNull().defaultNow(),
+  },
+  (t) => [index().on(t.userId, t.startsAt), index().on(t.applicationId)],
 );
 
 /**

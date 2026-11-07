@@ -6,17 +6,19 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { answerNewQuestion } from "@/app/app/actions/applications";
 import { CompanyTile } from "@/components/brand";
+import { TrackingPanel } from "@/components/app/tracking";
 import { AnswerRow, ApprovePanel, AutoRefresh, CopyButton, type FactRef, SentenceRow, StatusMenu } from "@/components/app/review";
 import { SubmitButton } from "@/components/submit-button";
 import { Badge, buttonVariants, Card, cn, Input, Select } from "@/components/ui";
 import { absoluteApplyUrl, loadApplication, profileLite } from "@/lib/apps";
 import { approvalBlockers, coverLetterText } from "@/lib/consent/payload";
 import { getDb } from "@/lib/db";
-import { events, facts, submissions } from "@/lib/db/schema";
+import { events, facts, interviews, submissions } from "@/lib/db/schema";
 import { classify } from "@/lib/draft/answers";
 import { allSentences, included } from "@/lib/draft/guard";
 import { cleanCompany, timeAgo } from "@/lib/format";
 import { requireUser } from "@/lib/session";
+import { followUpDue } from "@/lib/tracking";
 import { APP_STATUS_LABEL, type AppStatus } from "@/lib/types";
 
 export const metadata = { title: "Review application" };
@@ -53,6 +55,7 @@ async function ApplicationPageContent({ params }: PageProps<"/app/applications/[
   const subs = await db.select().from(submissions).where(eq(submissions.applicationId, app.id)).orderBy(desc(submissions.startedAt));
   const latest = subs[0];
   const succeeded = subs.find((s) => s.status === "succeeded");
+  const interviewRows = await db.select().from(interviews).where(eq(interviews.applicationId, app.id)).orderBy(asc(interviews.startsAt));
   const timeline = await db.select().from(events).where(eq(events.applicationId, app.id)).orderBy(desc(events.id)).limit(20);
 
   const draft = app.draft;
@@ -282,6 +285,19 @@ async function ApplicationPageContent({ params }: PageProps<"/app/applications/[
                 approvedHash={app.approvedHash}
                 summary={summary}
                 applyUrl={absoluteApplyUrl(job)}
+              />
+            </Card>
+          ) : null}
+
+          {sent || app.status === "manual_kit" ? (
+            <Card className="p-5">
+              <TrackingPanel
+                appId={app.id}
+                notes={app.notes}
+                followUpAt={app.followUpAt?.toISOString() ?? null}
+                followUpDue={followUpDue(app)}
+                interviews={interviewRows.map((iv) => ({ ...iv, startsAt: iv.startsAt.toISOString() }))}
+                defaultTitle={`Interview: ${job.title}, ${cleanCompany(job.company)}`}
               />
             </Card>
           ) : null}

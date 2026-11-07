@@ -1,7 +1,8 @@
 import "server-only";
 import type { FormQuestion } from "@/lib/types";
 import { detectWorkplace, finalize, type NormalizedJob } from "./normalize";
-import type { Board } from "./companies";
+import { BOARDS, type Board } from "./companies";
+import type { BoardRef, JobRef } from "./job-url";
 
 const UA = "NodJobAgent/0.1 (+consent-first job search; contact: local)";
 
@@ -39,28 +40,30 @@ export async function fetchGreenhouse(board: Board): Promise<NormalizedJob[]> {
   const data = await getJson<{ jobs: GhJob[] }>(
     `https://boards-api.greenhouse.io/v1/boards/${board.token}/jobs?content=true`,
   );
-  return data.jobs.map((j) => {
-    const location = j.location?.name ?? "";
-    return finalize({
-      id: `greenhouse:${board.token}:${j.id}`,
-      source: "greenhouse",
-      sourceCompany: board.token,
-      externalId: String(j.id),
-      company: board.name,
-      title: j.title.trim(),
-      location,
-      workplace: detectWorkplace(location, j.title),
-      employmentType: null,
-      salaryMin: null,
-      salaryMax: null,
-      salaryCurrency: null,
-      rawHtml: j.content ?? "",
-      applyUrl: j.absolute_url,
-      sourceUrl: j.absolute_url,
-      questions: null, // fetched on demand when the user prepares an application
-      postedAt: date(j.first_published ?? j.updated_at),
-      isDemo: false,
-    });
+  return data.jobs.map((j) => fromGreenhouse(board, j));
+}
+
+function fromGreenhouse(board: Board, j: GhJob): NormalizedJob {
+  const location = j.location?.name ?? "";
+  return finalize({
+    id: `greenhouse:${board.token}:${j.id}`,
+    source: "greenhouse",
+    sourceCompany: board.token,
+    externalId: String(j.id),
+    company: board.name,
+    title: j.title.trim(),
+    location,
+    workplace: detectWorkplace(location, j.title),
+    employmentType: null,
+    salaryMin: null,
+    salaryMax: null,
+    salaryCurrency: null,
+    rawHtml: j.content ?? "",
+    applyUrl: j.absolute_url,
+    sourceUrl: j.absolute_url,
+    questions: null, // fetched on demand when the user prepares an application
+    postedAt: date(j.first_published ?? j.updated_at),
+    isDemo: false,
   });
 }
 
@@ -136,38 +139,40 @@ type LeverJob = {
 
 export async function fetchLever(board: Board): Promise<NormalizedJob[]> {
   const data = await getJson<LeverJob[]>(`https://api.lever.co/v0/postings/${board.token}?mode=json`);
-  return data.map((j) => {
-    const location = j.categories?.allLocations?.join("; ") || j.categories?.location || "";
-    const html = [
-      j.description ?? "",
-      ...(j.lists ?? []).map((l) => `<h3>${l.text}</h3><ul>${l.content}</ul>`),
-      j.additional ?? "",
-    ].join("\n");
-    const yearly = !j.salaryRange?.interval || /year|annual/i.test(j.salaryRange.interval);
-    return finalize({
-      id: `lever:${board.token}:${j.id}`,
-      source: "lever",
-      sourceCompany: board.token,
-      externalId: j.id,
-      company: board.name,
-      title: j.text.trim(),
-      location,
-      workplace:
-        j.workplaceType === "remote" ? "remote"
-        : j.workplaceType === "hybrid" ? "hybrid"
-        : j.workplaceType === "on-site" ? "onsite"
-        : detectWorkplace(location),
-      employmentType: j.categories?.commitment ?? null,
-      salaryMin: yearly ? (j.salaryRange?.min ?? null) : null,
-      salaryMax: yearly ? (j.salaryRange?.max ?? null) : null,
-      salaryCurrency: j.salaryRange?.currency ?? null,
-      rawHtml: html,
-      applyUrl: j.applyUrl,
-      sourceUrl: j.hostedUrl,
-      questions: null,
-      postedAt: date(j.createdAt),
-      isDemo: false,
-    });
+  return data.map((j) => fromLever(board, j));
+}
+
+function fromLever(board: Board, j: LeverJob): NormalizedJob {
+  const location = j.categories?.allLocations?.join("; ") || j.categories?.location || "";
+  const html = [
+    j.description ?? "",
+    ...(j.lists ?? []).map((l) => `<h3>${l.text}</h3><ul>${l.content}</ul>`),
+    j.additional ?? "",
+  ].join("\n");
+  const yearly = !j.salaryRange?.interval || /year|annual/i.test(j.salaryRange.interval);
+  return finalize({
+    id: `lever:${board.token}:${j.id}`,
+    source: "lever",
+    sourceCompany: board.token,
+    externalId: j.id,
+    company: board.name,
+    title: j.text.trim(),
+    location,
+    workplace:
+      j.workplaceType === "remote" ? "remote"
+      : j.workplaceType === "hybrid" ? "hybrid"
+      : j.workplaceType === "on-site" ? "onsite"
+      : detectWorkplace(location),
+    employmentType: j.categories?.commitment ?? null,
+    salaryMin: yearly ? (j.salaryRange?.min ?? null) : null,
+    salaryMax: yearly ? (j.salaryRange?.max ?? null) : null,
+    salaryCurrency: j.salaryRange?.currency ?? null,
+    rawHtml: html,
+    applyUrl: j.applyUrl,
+    sourceUrl: j.hostedUrl,
+    questions: null,
+    postedAt: date(j.createdAt),
+    isDemo: false,
   });
 }
 
@@ -202,40 +207,104 @@ export async function fetchAshby(board: Board): Promise<NormalizedJob[]> {
   const data = await getJson<{ jobs: AshbyJob[] }>(
     `https://api.ashbyhq.com/posting-api/job-board/${board.token}?includeCompensation=true`,
   );
-  return data.jobs
-    .filter((j) => j.isListed !== false)
-    .map((j) => {
-      const location = [j.location, ...(j.secondaryLocations ?? []).map((s) => s.location)].join("; ");
-      const salary = j.compensation?.summaryComponents?.find(
-        (c) => c.compensationType === "Salary" && (!c.interval || /YEAR/i.test(c.interval)),
-      );
-      const wt = (j.workplaceType ?? "").toLowerCase();
-      return finalize({
-        id: `ashby:${board.token}:${j.id}`,
-        source: "ashby",
-        sourceCompany: board.token,
-        externalId: j.id,
-        company: board.name,
-        title: j.title.trim(),
-        location,
-        workplace:
-          wt === "remote" || j.isRemote ? "remote"
-          : wt === "hybrid" ? "hybrid"
-          : wt === "onsite" ? "onsite"
-          : detectWorkplace(location),
-        employmentType: j.employmentType ?? null,
-        salaryMin: salary?.minValue ?? null,
-        salaryMax: salary?.maxValue ?? null,
-        salaryCurrency: salary?.currencyCode ?? null,
-        rawHtml: j.descriptionHtml ?? "",
-        plainText: j.descriptionPlain,
-        applyUrl: j.applyUrl,
-        sourceUrl: j.jobUrl,
-        questions: null,
-        postedAt: date(j.publishedAt),
-        isDemo: false,
-      });
-    });
+  return data.jobs.filter((j) => j.isListed !== false).map((j) => fromAshby(board, j));
+}
+
+function fromAshby(board: Board, j: AshbyJob): NormalizedJob {
+  const location = [j.location, ...(j.secondaryLocations ?? []).map((s) => s.location)].join("; ");
+  const salary = j.compensation?.summaryComponents?.find(
+    (c) => c.compensationType === "Salary" && (!c.interval || /YEAR/i.test(c.interval)),
+  );
+  const wt = (j.workplaceType ?? "").toLowerCase();
+  return finalize({
+    id: `ashby:${board.token}:${j.id}`,
+    source: "ashby",
+    sourceCompany: board.token,
+    externalId: j.id,
+    company: board.name,
+    title: j.title.trim(),
+    location,
+    workplace:
+      wt === "remote" || j.isRemote ? "remote"
+      : wt === "hybrid" ? "hybrid"
+      : wt === "onsite" ? "onsite"
+      : detectWorkplace(location),
+    employmentType: j.employmentType ?? null,
+    salaryMin: salary?.minValue ?? null,
+    salaryMax: salary?.maxValue ?? null,
+    salaryCurrency: salary?.currencyCode ?? null,
+    rawHtml: j.descriptionHtml ?? "",
+    plainText: j.descriptionPlain,
+    applyUrl: j.applyUrl,
+    sourceUrl: j.jobUrl,
+    questions: null,
+    postedAt: date(j.publishedAt),
+    isDemo: false,
+  });
+}
+
+/* ------------------------------ Single job ------------------------------ */
+
+const titleCase = (token: string) =>
+  token.replace(/[-_.]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+
+/** Check a board exists and work out the company's name. Null if not found. */
+export async function resolveBoard(ref: BoardRef): Promise<Board | null> {
+  const known = BOARDS.find((b) => b.source === ref.source && b.token.toLowerCase() === ref.token.toLowerCase());
+  if (known) return known;
+  const token = encodeURIComponent(ref.token);
+  const exists = (err: unknown) => {
+    if (err instanceof Error && /^404 /.test(err.message)) return null;
+    throw err;
+  };
+  if (ref.source === "greenhouse") {
+    const meta = await getJson<{ name?: string }>(`https://boards-api.greenhouse.io/v1/boards/${token}`, 20_000).catch(exists);
+    return meta ? { ...ref, name: meta.name?.trim() || titleCase(ref.token) } : null;
+  }
+  const url =
+    ref.source === "lever"
+      ? `https://api.lever.co/v0/postings/${token}?mode=json&limit=1`
+      : `https://api.ashbyhq.com/posting-api/job-board/${token}`;
+  const data = await getJson<unknown>(url, 20_000).catch(exists);
+  return data ? { ...ref, name: titleCase(ref.token) } : null;
+}
+
+/** All open jobs on one board. */
+export function fetchBoard(board: Board) {
+  return board.source === "greenhouse" ? fetchGreenhouse(board) : board.source === "lever" ? fetchLever(board) : fetchAshby(board);
+}
+
+/** Fetch one job from its ATS's public API, for jobs pasted in by the user. */
+export async function fetchJobByRef(ref: JobRef): Promise<NormalizedJob | null> {
+  const known = BOARDS.find((b) => b.source === ref.source && b.token.toLowerCase() === ref.token.toLowerCase());
+  const token = encodeURIComponent(ref.token);
+  const id = encodeURIComponent(ref.jobId);
+  const notFound = (err: unknown) => {
+    if (err instanceof Error && /^404 /.test(err.message)) return null;
+    throw err;
+  };
+
+  if (ref.source === "greenhouse") {
+    const [job, meta] = await Promise.all([
+      getJson<GhJob>(`https://boards-api.greenhouse.io/v1/boards/${token}/jobs/${id}`, 20_000).catch(notFound),
+      known ? null : getJson<{ name?: string }>(`https://boards-api.greenhouse.io/v1/boards/${token}`, 20_000).catch(() => null),
+    ]);
+    if (!job) return null;
+    const name = known?.name ?? meta?.name ?? job.company_name ?? titleCase(ref.token);
+    return fromGreenhouse({ source: "greenhouse", token: ref.token, name }, job);
+  }
+  if (ref.source === "lever") {
+    const job = await getJson<LeverJob>(`https://api.lever.co/v0/postings/${token}/${id}?mode=json`, 20_000).catch(notFound);
+    if (!job) return null;
+    return fromLever({ source: "lever", token: ref.token, name: known?.name ?? titleCase(ref.token) }, job);
+  }
+  const data = await getJson<{ jobs: AshbyJob[] }>(
+    `https://api.ashbyhq.com/posting-api/job-board/${token}?includeCompensation=true`,
+    20_000,
+  ).catch(notFound);
+  const job = data?.jobs.find((j) => j.id === ref.jobId);
+  if (!job) return null;
+  return fromAshby({ source: "ashby", token: ref.token, name: known?.name ?? titleCase(ref.token) }, job);
 }
 
 /* -------------------------------- Adzuna ------------------------------- */
